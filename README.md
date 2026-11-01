@@ -1,77 +1,76 @@
-Ollama-TUI 🦙💻
+# Ollama-TUI 🦙💻
 
-A blazing-fast, zero-bloat terminal user interface (TUI) for Ollama, built entirely in Go.
+A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go. 
 
-Born out of a desire to ditch heavy Electron apps and web browsers, Ollama-TUI provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on FreeBSD, but designed to be universally cross-platform.
-✨ Features
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on **FreeBSD**, but designed to be universally cross-platform.
 
-    Native & Fast: Built with Bubble Tea and Lipgloss. No web wrappers, no Electron, just pure terminal speed.
+## ✨ Features
 
-    Auto-Server Management: Automatically boots ollama serve in the background when you launch it. Prompts to kill the server when you exit.
+* **Native & Fast:** Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lipgloss](https://github.com/charmbracelet/lipgloss). No web wrappers, no Electron, just pure terminal speed.
+* **Auto-Server Management:** Automatically boots `ollama serve` in the background when you launch it. Prompts to kill the server when you exit.
+* **Multi-Model Support:** Switch between your installed local models on the fly without losing your chat context.
+* **System Prompts:** Set a persistent system prompt (e.g., *"You are a UNIX graybeard"*) using the built-in editor.
+* **Context Meter:** Keep track of your token usage with a visual context window meter in the header.
+* **Chat History:** Save your chats to `.json` files and load them back up anytime.
+* **Branching:** Go back in time, edit a past message, and branch the conversation like ChatGPT.
+* **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
+* **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
+* **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
 
-    Multi-Model Support: Switch between your installed local models on the fly without losing your chat context.
-
-    System Prompts: Set a persistent system prompt (e.g., "You are a UNIX graybeard") using the built-in editor.
-
-    Context Meter: Keep track of your token usage with a visual context window meter in the header.
-
-    Chat History: Save your chats to .json files and load them back up anytime.
-
-    Branching: Go back in time, edit a past message, and branch the conversation like ChatGPT.
-
-    Vim-Style Navigation: Use Tab to toggle between typing and "List Mode" to scroll and select messages.
-
-    Clipboard Integration: Copy selected AI responses directly to your system clipboard.
-
-    Cancelable Streams: Stop the AI mid-generation if it starts yapping too much.
-
-📦 Prerequisites
+## 📦 Prerequisites
 
 Before you build or run this, ensure you have:
+1. **Go** (1.20 or newer) installed.
+2. **Ollama** installed and available in your `$PATH`.
+3. **At least one model pulled** (e.g., `ollama pull gemma3:1b`).
 
-    Go (1.20 or newer) installed.
+### 🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
+To copy text to your clipboard, the `atotto/clipboard` library requires `xclip`.
+* **FreeBSD:** `sudo pkg install xclip`
+* **Debian/Ubuntu:** `sudo apt install xclip`
+* **Arch/Artix:** `sudo pacman -S xclip`
+* **macOS:** No extra dependencies needed.
 
-    Ollama installed and available in your $PATH.
+---
 
-    At least one model pulled (e.g., ollama pull gemma3:1b).
+## 🚀 Installation
 
-🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
-
-To copy text to your clipboard, the atotto/clipboard library requires xclip.
-
-    FreeBSD: sudo pkg install xclip
-
-    Debian/Ubuntu: sudo apt install xclip
-
-    Arch/Artix: sudo pacman -S xclip
-
-    macOS: No extra dependencies needed.
+### 1. Clone & Build
+```bash
+git clone https://github.com/yourusername/ollama-tui.git
+cd ollama-tui
+go mod tidy
+```
 
 🚀 Installation
 1. Clone & Build
-bash
+```bash
 
 git clone https://github.com/yourusername/ollama-tui.git
 cd ollama-tui
 go mod tidy
+```
 
 2. Run the Installer
 
 For POSIX (Linux, FreeBSD, macOS):
-bash
+```bash
 
 chmod +x install.sh
 ./install.sh
+```
 
 For Windows (PowerShell):
-powershell
+```powershell
 
 .\install.ps1
+```
 
 3. Manual Run (Without Installing)
-bash
+```bash
 
 go run main.go
+```
 
 ⌨️ Keybindings
 
@@ -91,23 +90,18 @@ Shift + B	List	Branch the chat from the selected message
 Ctrl + O	List	Open the Chat History browser
 Ctrl + C	Any	Exit app (prompts to kill Ollama server)
 🖥️ Platform Support
-
-    FreeBSD / OpenBSD / NetBSD: Fully supported natively.
-
-    Linux (Arch, Debian, Fedora, etc.): Fully supported natively.
-
-    macOS (Intel & Apple Silicon): Fully supported natively.
-
-    Windows: Fully supported natively via cross-compilation (requires the .exe build).
+``
+    - FreeBSD / OpenBSD / NetBSD: Fully supported natively.
+    - Linux (Arch, Debian, Fedora, etc.): Fully supported natively.
+    - macOS (Intel & Apple Silicon): Fully supported natively.
+    - Windows: Fully supported natively via cross-compilation (requires the .exe build).
 
 (Note: The Windows installer script is separate because Windows is not POSIX-compliant and handles background processes slightly differently).
 🛠️ Built With
-
-    Bubble Tea - The TUI framework.
-
-    Lipgloss - Style definitions for nice terminal layouts.
-
-    Ollama API - The local AI backend.
+``
+    - Bubble Tea - The TUI framework.
+    - Lipgloss - Style definitions for nice terminal layouts.
+    - Ollama API - The local AI backend.
 
 📄 License
 
