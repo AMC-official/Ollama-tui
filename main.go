@@ -1,11 +1,14 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -19,6 +22,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/ledongthuc/pdf"
 )
 
 // --- Ollama API Structs ---
@@ -38,15 +42,20 @@ type OllamaGenerateRes struct {
 	Response string `json:"response"`
 }
 
-// --- Config Struct ---
+// --- Config & App Models ---
 type Config struct {
 	SystemPrompt string `json:"system_prompt"`
 }
 
-// --- App Models ---
 type ChatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
+}
+
+type Attachment struct {
+	Name string
+	Path string
+	Text string
 }
 
 type state int
@@ -57,6 +66,8 @@ const (
 	stateChat
 	stateHistory
 	stateSystemPrompt
+	stateFileAttach
+	stateAttachmentList
 	stateError
 	stateExiting
 )
@@ -91,6 +102,10 @@ type model struct {
 	viewport         viewport.Model
 	textarea         textarea.Model
 	promptInput      textarea.Model
+	fileInput        textarea.Model
+	attachments      []Attachment
+	attachCursor     int
+	swapIndex        int // -1 for adding new, >=0 for swapping
 	ollamaCmd        *exec.Cmd
 	errText          string
 	keepServer       bool
@@ -106,7 +121,7 @@ type model struct {
 	height           int
 }
 
-// Config Helpers
+// --- Config Helpers ---
 func getConfigPath() string {
 	configDir, _ := os.UserConfigDir()
 	return filepath.Join(configDir, "ollama-tui", "config.json")
@@ -128,7 +143,7 @@ func saveConfig(cfg Config) {
 	os.WriteFile(path, data, 0644)
 }
 
-// Custom Messages
+// --- Custom Messages ---
 type modelsFetchedMsg struct{ models []string }
 type errMsg struct{ err error }
 func (e errMsg) Error() string { return e.err.Error() }
@@ -136,6 +151,9 @@ type clearStatusMsg struct{}
 type historyFilesMsg struct{ files []string }
 type ollamaMissingMsg struct{}
 type noModelsMsg struct{}
+type fileAttachedMsg struct{ attachment Attachment }
+type fileErrorMsg struct{ err string }
+type fileEditedMsg struct{ index int; text string }
 
 // Init runs when the app starts
 func (m model) Init() tea.Cmd {
@@ -146,7 +164,7 @@ func (m model) Init() tea.Cmd {
 
 		resp, err := http.Get("http://localhost:11434/api/tags")
 		if err != nil {
-			return ollamaMissingMsg{} // Server probably failed to start
+			return ollamaMissingMsg{}
 		}
 		defer resp.Body.Close()
 
@@ -169,9 +187,7 @@ func (m model) Init() tea.Cmd {
 func waitForStream(ch chan string) tea.Cmd {
 	return func() tea.Msg {
 		text, ok := <-ch
-		if !ok {
-			return streamDoneMsg{}
-		}
+		if !ok { return streamDoneMsg{} }
 		return streamChunkMsg(text)
 	}
 }
@@ -189,26 +205,18 @@ func startGenerate(ctx context.Context, modelName, prompt, system string, ch cha
 		})
 
 		req, err := http.NewRequestWithContext(ctx, "POST", "http://localhost:11434/api/generate", bytes.NewBuffer(reqBody))
-		if err != nil {
-			close(ch)
-			return nil
-		}
+		if err != nil { close(ch); return nil }
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			close(ch)
-			return nil
-		}
+		if err != nil { close(ch); return nil }
 		defer resp.Body.Close()
 
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
 			var res OllamaGenerateRes
 			json.Unmarshal(scanner.Bytes(), &res)
-			if res.Response != "" {
-				ch <- res.Response
-			}
+			if res.Response != "" { ch <- res.Response }
 		}
 		close(ch)
 		return nil
@@ -226,6 +234,111 @@ func loadHistoryFiles() tea.Msg {
 	return historyFilesMsg{files: files}
 }
 
+// --- File Parsing Helpers ---
+func readTextFile(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	return string(data), err
+}
+
+func readPDF(path string) (string, error) {
+	f, r, err := pdf.Open(path)
+	if err != nil { return "", err }
+	defer f.Close()
+
+	var buf bytes.Buffer
+	b, err := r.GetPlainText()
+	if err != nil { return "", err }
+	buf.ReadFrom(b)
+	return buf.String(), nil
+}
+
+func extractXMLFromZip(path, targetFile string) (string, error) {
+	r, err := zip.OpenReader(path)
+	if err != nil { return "", err }
+	defer r.Close()
+
+	for _, f := range r.File {
+		if f.Name == targetFile {
+			rc, err := f.Open()
+			if err != nil { return "", err }
+			defer rc.Close()
+			data, err := io.ReadAll(rc)
+			return string(data), err
+		}
+	}
+	return "", fmt.Errorf("could not find %s in %s", targetFile, path)
+}
+
+func stripXML(xmlContent string) string {
+	decoder := xml.NewDecoder(strings.NewReader(xmlContent))
+	var textBuilder strings.Builder
+
+	for {
+		token, err := decoder.Token()
+		if err != nil {
+			break
+		}
+		// We only care about the actual text, not the tags
+		switch t := token.(type) {
+			case xml.CharData:
+				text := strings.TrimSpace(string(t))
+				if text != "" {
+					textBuilder.WriteString(text + " ")
+				}
+		}
+	}
+	return textBuilder.String()
+}
+
+func processFile(path string) tea.Msg {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, `"'`)
+	ext := strings.ToLower(filepath.Ext(path))
+	var content string
+	var err error
+
+	switch ext {
+		case ".txt", ".md", ".go", ".c", ".h", ".py", ".js", ".json", ".sh", ".yaml", ".yml", ".rs", ".toml", ".ini", ".conf":
+			content, err = readTextFile(path)
+		case ".pdf":
+			content, err = readPDF(path)
+		case ".docx":
+			var xmlStr string
+			xmlStr, err = extractXMLFromZip(path, "word/document.xml")
+			if err == nil { content = stripXML(xmlStr) }
+		case ".odt":
+			var xmlStr string
+			xmlStr, err = extractXMLFromZip(path, "content.xml")
+			if err == nil { content = stripXML(xmlStr) }
+		case ".abw":
+			var xmlStr string
+			xmlStr, err = readTextFile(path)
+			if err == nil { content = stripXML(xmlStr) }
+		default:
+			return fileErrorMsg{err: fmt.Sprintf("unsupported file type: %s", ext)}
+	}
+
+	if err != nil { return fileErrorMsg{err: err.Error()} }
+
+	content = strings.Join(strings.Fields(content), " ")
+	if len(content) > 20000 {
+		content = content[:20000] + "\n...[TRUNCATED]..."
+	}
+
+	return fileAttachedMsg{attachment: Attachment{Name: filepath.Base(path), Path: path, Text: content}}
+}
+
+func editInNano(path string, index int) tea.Cmd {
+	c := exec.Command("nano", path)
+	return tea.ExecProcess(c, func(err error) tea.Msg {
+		if err != nil { return fileErrorMsg{err: err.Error()} }
+		content, err := readTextFile(path)
+		if err != nil { return fileErrorMsg{err: err.Error()} }
+		content = strings.Join(strings.Fields(content), " ")
+		return fileEditedMsg{index: index, text: content}
+	})
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
@@ -237,6 +350,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.Height = msg.Height - 10
 			m.textarea.SetWidth(msg.Width - 6)
 			m.promptInput.SetWidth(msg.Width - 6)
+			m.fileInput.SetWidth(msg.Width - 10) // Account for borders and prompt
 			m.updateViewport()
 
 		case clearStatusMsg:
@@ -251,6 +365,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.state = stateError
 			m.errText = "please install a model with 'ollama pull <model name>'\n\nwe'll keep the server running when you exit\nuntil you install a model and relaunch."
 			m.keepServer = true
+
+		case fileAttachedMsg:
+			if m.swapIndex == -1 {
+				m.attachments = append(m.attachments, msg.attachment)
+			} else {
+				m.attachments[m.swapIndex] = msg.attachment
+				m.swapIndex = -1
+			}
+			m.state = stateAttachmentList
+			m.statusMsg = fmt.Sprintf("Attached: %s", msg.attachment.Name)
+			cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+
+		case fileEditedMsg:
+			m.attachments[msg.index].Text = msg.text
+			m.state = stateAttachmentList
+			m.statusMsg = "File edited and reloaded."
+			cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+
+		case fileErrorMsg:
+			m.state = stateChat
+			m.focusMode = "textarea"
+			m.textarea.Focus()
+			m.statusMsg = "File error: " + msg.err
+			cmds = append(cmds, func() tea.Msg { time.Sleep(4 * time.Second); return clearStatusMsg{} })
 
 		case modelsFetchedMsg:
 			m.models = msg.models
@@ -286,10 +424,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "ctrl+c" {
-				if m.state == stateChat || m.state == stateHistory || m.state == stateSystemPrompt {
+				if m.state == stateChat || m.state == stateHistory || m.state == stateSystemPrompt || m.state == stateFileAttach || m.state == stateAttachmentList {
 					m.state = stateExiting
 					m.textarea.Blur()
 					m.promptInput.Blur()
+					m.fileInput.Blur()
 				} else {
 					return m, tea.Quit
 				}
@@ -304,6 +443,63 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				if msg.String() == "n" || msg.String() == "N" { return m, tea.Quit }
 				return m, nil
+			}
+
+			if m.state == stateFileAttach {
+				var cmd tea.Cmd
+				m.fileInput, cmd = m.fileInput.Update(msg)
+				cmds = append(cmds, cmd)
+
+				if msg.String() == "esc" {
+					m.state = stateChat
+					m.focusMode = "textarea"
+					m.fileInput.Blur()
+					m.textarea.Focus()
+					m.statusMsg = "Attachment cancelled."
+				} else if msg.String() == "enter" {
+					path := m.fileInput.Value()
+					m.fileInput.Reset()
+					m.fileInput.Blur()
+					if path != "" {
+						cmds = append(cmds, func() tea.Msg { return processFile(path) })
+					} else {
+						m.state = stateChat
+						m.focusMode = "textarea"
+						m.textarea.Focus()
+					}
+				}
+				return m, tea.Batch(cmds...)
+			}
+
+			if m.state == stateAttachmentList {
+				switch msg.String() {
+					case "esc", "ctrl+s":
+						m.state = stateChat
+						m.focusMode = "textarea"
+						m.textarea.Focus()
+					case "up", "k":
+						if m.attachCursor > 0 { m.attachCursor-- }
+					case "down", "j":
+						if m.attachCursor < len(m.attachments)-1 { m.attachCursor++ }
+					case "X": // Delete
+						if len(m.attachments) > 0 {
+							m.attachments = append(m.attachments[:m.attachCursor], m.attachments[m.attachCursor+1:]...)
+							if m.attachCursor >= len(m.attachments) && m.attachCursor > 0 { m.attachCursor-- }
+							m.statusMsg = "Attachment deleted."
+						}
+					case "S": // Swap
+						if len(m.attachments) > 0 {
+							m.swapIndex = m.attachCursor
+							m.state = stateFileAttach
+							m.fileInput.Focus()
+						}
+					case "N": // Edit in Nano
+						if len(m.attachments) > 0 {
+							attach := m.attachments[m.attachCursor]
+							cmds = append(cmds, editInNano(attach.Path, m.attachCursor))
+						}
+				}
+				return m, tea.Batch(cmds...)
 			}
 
 			if m.state == stateSystemPrompt {
@@ -383,9 +579,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if m.state == stateChat {
 				if msg.String() == "alt+s" && m.isThinking {
-					if m.cancelStream != nil {
-						m.cancelStream()
-					}
+					if m.cancelStream != nil { m.cancelStream() }
 					m.isThinking = false
 					m.messages[len(m.messages)-1].Content += " [Stopped by user]"
 					m.updateViewport()
@@ -458,19 +652,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						case "ctrl+o":
 							return m, loadHistoryFiles
+						case "ctrl+l":
+							if len(m.attachments) > 0 {
+								m.state = stateAttachmentList
+								m.attachCursor = 0
+							}
 					}
 					return m, tea.Batch(cmds...)
 				}
 
 				if m.focusMode == "textarea" && !m.isThinking {
 					var cmd tea.Cmd
+
+					if msg.String() == "ctrl+f" {
+						m.state = stateFileAttach
+						m.swapIndex = -1
+						m.textarea.Blur()
+						m.fileInput.Focus()
+						return m, nil
+					}
+					if msg.String() == "ctrl+l" {
+						if len(m.attachments) > 0 {
+							m.state = stateAttachmentList
+							m.attachCursor = 0
+						}
+						return m, nil
+					}
+
 					m.textarea, cmd = m.textarea.Update(msg)
 					cmds = append(cmds, cmd)
 
 					if msg.String() == "enter" && m.textarea.Value() != "" {
 						userPrompt := m.textarea.Value()
+
+						var contextBuilder strings.Builder
+						if len(m.attachments) > 0 {
+							contextBuilder.WriteString("Context from attached files:\n")
+							for _, a := range m.attachments {
+								contextBuilder.WriteString(fmt.Sprintf("--- %s ---\n%s\n\n", a.Name, a.Text))
+							}
+						}
+
+						finalPrompt := userPrompt
+						if len(m.attachments) > 0 {
+							finalPrompt = contextBuilder.String() + "User Prompt: " + userPrompt
+						}
+
 						m.messages = append(m.messages, ChatMessage{Role: "You", Content: userPrompt})
+						for _, a := range m.attachments {
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("📎 Attached: %s", a.Name)})
+						}
 						m.messages = append(m.messages, ChatMessage{Role: "AI", Content: ""})
+
+						m.attachments = nil // Clear after sending
 
 						m.selectedMsg = -1
 						m.streamChan = make(chan string)
@@ -484,7 +718,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.updateViewport()
 						m.viewport.GotoBottom()
 
-						cmds = append(cmds, startGenerate(ctx, m.models[m.cursor], userPrompt, m.systemPrompt, m.streamChan))
+						cmds = append(cmds, startGenerate(ctx, m.models[m.cursor], finalPrompt, m.systemPrompt, m.streamChan))
 						cmds = append(cmds, waitForStream(m.streamChan))
 					}
 				}
@@ -535,7 +769,6 @@ func (m *model) updateViewport() {
 
 	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, rendered...))
 }
-
 func (m model) View() string {
 	if m.err != nil { return fmt.Sprintf("Error: %v\n", m.err) }
 
@@ -545,47 +778,91 @@ func (m model) View() string {
 		BorderForeground(colorRed).
 		Padding(1, 2).
 		Render(lipgloss.NewStyle().Foreground(colorRed).Bold(true).Render("ERROR: ") + m.errText)
-		return fmt.Sprintf("\n\n  %s\n\n  Press Ctrl+C or Enter to exit.", errBox)
+		return lipgloss.NewStyle().Margin(2, 4).Render(errBox)
 	}
 
 	if m.state == stateLoading { return "\n  Connecting to Ollama and fetching models...\n" }
 	if m.state == stateExiting { return "\n  Do you want to stop the Ollama server? (y/n)\n" }
 
-	if m.state == stateSystemPrompt {
-		return fmt.Sprintf(
-			"\n  %s\n\n  %s\n\n  %s\n",
-		     aiLabelStyle.Render("Edit System Prompt"),
-				   textareaStyle.Render(m.promptInput.View()),
-				   lipgloss.NewStyle().Foreground(colorGray).Render("Press Enter or Ctrl+S to save, Esc to cancel."),
+	if m.state == stateFileAttach {
+		title := "Attach File (Ctrl+F)"
+		if m.swapIndex != -1 { title = "Replace Attachment (Shift+S)" }
+
+		// Make the box slightly narrower than the screen
+		box := textareaStyle.Width(m.width - 10).Render(m.fileInput.View())
+		help := lipgloss.NewStyle().Foreground(colorGray).Render("Drag & drop a file or type a path. Press Enter to attach, Esc to cancel.")
+
+		content := lipgloss.JoinVertical(
+			lipgloss.Left,
+			aiLabelStyle.Render(title),
+						 "",
+				   box,
+				   "",
+				   help,
 		)
+		return lipgloss.NewStyle().Margin(1, 2).Render(content)
+	}
+
+	if m.state == stateAttachmentList {
+		s := "Manage Attachments (Ctrl+L)\n\n"
+		if len(m.attachments) == 0 {
+			s += "No files attached.\nPress Esc to return."
+		} else {
+			for i, a := range m.attachments {
+				cursor := " "
+				style := lipgloss.NewStyle()
+				if m.attachCursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
+				s += style.Render(fmt.Sprintf("%s %s (%d chars)", cursor, a.Name, len(a.Text))) + "\n"
+			}
+			s += "\n↑/↓ Select • Shift+X Delete • Shift+S Replace • Shift+N Edit in Nano • Esc/Ctrl+S Save & Return"
+		}
+		return lipgloss.NewStyle().Margin(1, 2).Render(s)
+	}
+
+	if m.state == stateSystemPrompt {
+		box := textareaStyle.Width(m.width - 10).Render(m.promptInput.View())
+		help := lipgloss.NewStyle().Foreground(colorGray).Render("Press Enter or Ctrl+S to save, Esc to cancel.")
+
+		content := lipgloss.JoinVertical(
+			lipgloss.Left,
+			aiLabelStyle.Render("Edit System Prompt"),
+						 "",
+				   box,
+				   "",
+				   help,
+		)
+		return lipgloss.NewStyle().Margin(1, 2).Render(content)
 	}
 
 	if m.state == stateHistory {
-		s := "\n  Select a chat history to load (Up/Down, Enter to load, Esc to cancel):\n\n"
-		if len(m.historyFiles) == 0 { s += "  No saved histories found.\n" }
+		s := "Select a chat history to load (Up/Down, Enter to load, Esc to cancel):\n\n"
+		if len(m.historyFiles) == 0 { s += "No saved histories found.\n" }
 		for i, choice := range m.historyFiles {
 			cursor := " "
 			style := lipgloss.NewStyle()
 			if m.historyCursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
-			s += style.Render(fmt.Sprintf("  %s %s", cursor, filepath.Base(choice))) + "\n"
+			s += style.Render(fmt.Sprintf("%s %s", cursor, filepath.Base(choice))) + "\n"
 		}
-		return s
+		return lipgloss.NewStyle().Margin(1, 2).Render(s)
 	}
 
 	if m.state == stateSelectModel {
-		s := "\n  Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
+		s := "Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
 		for i, choice := range m.models {
 			cursor := " "
 			style := lipgloss.NewStyle()
 			if m.cursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
-			s += style.Render(fmt.Sprintf("  %s %s", cursor, choice)) + "\n"
+			s += style.Render(fmt.Sprintf("%s %s", cursor, choice)) + "\n"
 		}
-		return s
+		return lipgloss.NewStyle().Margin(1, 2).Render(s)
 	}
 
+	// --- CHAT STATE UI ---
 	modelName := m.models[m.cursor]
 	totalChars := 0
 	for _, msg := range m.messages { totalChars += len(msg.Content) }
+	for _, a := range m.attachments { totalChars += len(a.Text) }
+
 	approxTokens := totalChars / 4
 	percent := (float64(approxTokens) / float64(4096)) * 100
 	meterColor := colorGreen
@@ -603,9 +880,13 @@ func (m model) View() string {
 	} else if m.isThinking {
 		statusText = lipgloss.NewStyle().Foreground(colorRed).Render("Thinking... (Alt+S to stop)")
 	} else if m.focusMode == "list" {
-		statusText = lipgloss.NewStyle().Foreground(colorPurple).Render("[LIST] w/z/s Scroll • ↑/↓ Select • C Copy • N New • S Switch • P Prompt • J Save • B Branch • Ctrl+O Hist")
+		statusText = lipgloss.NewStyle().Foreground(colorPurple).Render("[LIST] w/z/s Scroll • ↑/↓ Select • C Copy • N New • S Switch • P Prompt • J Save • B Branch • Ctrl+O Hist • Ctrl+L Attach")
 	} else {
-		statusText = "[CHAT MODE] Tab to switch to list mode"
+		if len(m.attachments) > 0 {
+			statusText = lipgloss.NewStyle().Foreground(colorYellow).Bold(true).Render(fmt.Sprintf("[%d Attached] ", len(m.attachments))) + "[CHAT MODE] Ctrl+L to manage • Tab for list"
+		} else {
+			statusText = "[CHAT MODE] Ctrl+F to attach file • Ctrl+L to manage • Tab for list mode"
+		}
 	}
 	status := statusStyle.Render(statusText)
 
@@ -615,7 +896,6 @@ func (m model) View() string {
 func main() {
 	cfg := loadConfig()
 
-	// Check if Ollama is installed before doing anything
 	var ollamaCmd *exec.Cmd
 	if _, err := exec.LookPath("ollama"); err == nil {
 		ollamaCmd = exec.Command("ollama", "serve")
@@ -627,15 +907,23 @@ func main() {
 	ta.Placeholder = "Send a message..."
 	ta.Focus()
 	ta.Prompt = "┃ "
-	ta.CharLimit = 1000
+	ta.CharLimit = 2000
 	ta.SetHeight(3)
 	ta.ShowLineNumbers = false
 
 	pi := textarea.New()
-	pi.Placeholder = "Enter a system prompt (e.g., 'You are a helpful assistant')..."
+	pi.Placeholder = "Enter a system prompt..."
 	pi.Prompt = "┃ "
 	pi.CharLimit = 2000
 	pi.SetHeight(5)
+	pi.ShowLineNumbers = false
+
+	fi := textarea.New()
+	fi.Placeholder = "/path/to/your/file.pdf"
+	fi.Prompt = "┃ "
+	fi.CharLimit = 500
+	fi.SetHeight(1)
+	fi.ShowLineNumbers = false // THIS FIXES THE WEIRD "1" IN THE BOX
 
 	vp := viewport.New(80, 20)
 
@@ -643,6 +931,7 @@ func main() {
 		state:        stateLoading,
 		textarea:     ta,
 		promptInput:  pi,
+		fileInput:    fi,
 		viewport:     vp,
 		focusMode:    "textarea",
 		selectedMsg:  -1,
@@ -650,6 +939,7 @@ func main() {
 		systemPrompt: cfg.SystemPrompt,
 		config:       cfg,
 		ollamaCmd:    ollamaCmd,
+		swapIndex:    -1,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
