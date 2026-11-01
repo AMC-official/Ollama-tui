@@ -109,7 +109,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 * Lipgloss - Style definitions for nice terminal layouts.
 * Ollama API - The local AI backend.
 
-> Additional note, Starting on v1.1.3 or lower, ignore that `.ps1` file on non-windows releases, it's a bit of a misconfiguration in goreleaser.yml
+> Additional note, Starting on v1.1.3 or lower, ignore that `.ps1` file on non-windows releases, it's a bit of a misconfiguration in `goreleaser.yml`.
 
 ## 📄 License
 
