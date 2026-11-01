@@ -278,7 +278,6 @@ func stripXML(xmlContent string) string {
 		if err != nil {
 			break
 		}
-		// We only care about the actual text, not the tags
 		switch t := token.(type) {
 			case xml.CharData:
 				text := strings.TrimSpace(string(t))
@@ -291,11 +290,8 @@ func stripXML(xmlContent string) string {
 }
 
 func processFile(path string) tea.Msg {
-	// 1. Trim spaces and quotes (handles drag & drop wrapping)
 	path = strings.TrimSpace(path)
 	path = strings.Trim(path, `"'`)
-
-	// 2. Clean the path (fixes slashes for Windows vs POSIX)
 	path = filepath.Clean(path)
 
 	ext := strings.ToLower(filepath.Ext(path))
@@ -380,20 +376,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.state = stateAttachmentList
 			m.statusMsg = fmt.Sprintf("Attached: %s", msg.attachment.Name)
-			cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+			cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 
 		case fileEditedMsg:
 			m.attachments[msg.index].Text = msg.text
 			m.state = stateAttachmentList
 			m.statusMsg = "File edited and reloaded."
-			cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+			cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 
 		case fileErrorMsg:
 			m.state = stateChat
 			m.focusMode = "textarea"
 			m.textarea.Focus()
 			m.statusMsg = "File error: " + msg.err
-			cmds = append(cmds, func() tea.Msg { time.Sleep(4 * time.Second); return clearStatusMsg{} })
+			cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 
 		case modelsFetchedMsg:
 			m.models = msg.models
@@ -461,6 +457,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.fileInput.Blur()
 					m.textarea.Focus()
 					m.statusMsg = "Attachment cancelled."
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 				} else if msg.String() == "enter" {
 					path := m.fileInput.Value()
 					m.fileInput.Reset()
@@ -491,6 +488,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.attachments = append(m.attachments[:m.attachCursor], m.attachments[m.attachCursor+1:]...)
 							if m.attachCursor >= len(m.attachments) && m.attachCursor > 0 { m.attachCursor-- }
 							m.statusMsg = "Attachment deleted."
+							cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 						}
 					case "S": // Swap
 						if len(m.attachments) > 0 {
@@ -517,6 +515,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusMode = "list"
 					m.promptInput.Blur()
 					m.statusMsg = "Prompt edit cancelled."
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 				} else if msg.String() == "ctrl+s" || msg.String() == "enter" {
 					m.systemPrompt = m.promptInput.Value()
 					m.config.SystemPrompt = m.systemPrompt
@@ -525,7 +524,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusMode = "list"
 					m.promptInput.Blur()
 					m.statusMsg = "System prompt saved."
-					cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 				}
 				return m, tea.Batch(cmds...)
 			}
@@ -551,10 +550,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								m.updateViewport()
 								m.viewport.GotoBottom()
 								m.statusMsg = "Loaded history."
+								cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 							}
 						}
 				}
-				return m, nil
+				return m, tea.Batch(cmds...)
 			}
 
 			if m.state == stateSelectModel {
@@ -579,7 +579,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.updateViewport()
 						m.textarea.Focus()
 				}
-				return m, nil
+				return m, tea.Batch(cmds...)
 			}
 
 			if m.state == stateChat {
@@ -623,7 +623,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
 								clipboard.WriteAll(m.messages[m.selectedMsg].Content)
 								m.statusMsg = "Copied to clipboard!"
-								cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+								cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 							}
 						case "N":
 							m.messages = []ChatMessage{{Role: "System", Content: fmt.Sprintf("Started new chat with %s", m.models[m.cursor])}}
@@ -631,6 +631,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.autoScroll = true
 							m.updateViewport()
 							m.statusMsg = "Started new chat."
+							cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 						case "S":
 							m.state = stateSelectModel
 							m.isSwitchingModel = true
@@ -645,7 +646,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							data, _ := json.MarshalIndent(m.messages, "", "  ")
 							os.WriteFile(path, data, 0644)
 							m.statusMsg = "Saved: " + filename
-							cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
+							cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 						case "B":
 							if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
 								m.messages = m.messages[:m.selectedMsg+1]
@@ -654,6 +655,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								m.autoScroll = true
 								m.updateViewport()
 								m.statusMsg = "Branched chat."
+								cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 							}
 						case "ctrl+o":
 							return m, loadHistoryFiles
@@ -737,6 +739,10 @@ func (m *model) updateViewport() {
 	var rendered []string
 	textWidth := m.viewport.Width - 3
 
+	selectedMsgStartLine := 0
+	selectedMsgEndLine := 0
+	currentLine := 0
+
 	for i, msg := range m.messages {
 		isSelected := (i == m.selectedMsg && m.focusMode == "list")
 
@@ -769,10 +775,59 @@ func (m *model) updateViewport() {
 		for j := 1; j < len(lines); j++ { combined = append(combined, indent+lines[j]) }
 
 		block := strings.Join(combined, "\n")
-		rendered = append(rendered, lipgloss.JoinHorizontal(lipgloss.Top, pointer, block))
+		renderedBlock := lipgloss.JoinHorizontal(lipgloss.Top, pointer, block)
+		rendered = append(rendered, renderedBlock)
+
+		// Track line numbers for the selected message
+		if i == m.selectedMsg {
+			selectedMsgStartLine = currentLine
+			selectedMsgEndLine = currentLine + len(lines) - 1
+		}
+		currentLine += len(lines)
 	}
 
 	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, rendered...))
+
+	// If we are in list mode and there is a selected message, ensure it's visible
+	if m.focusMode == "list" && m.selectedMsg >= 0 {
+		if selectedMsgStartLine < m.viewport.YOffset {
+			m.viewport.SetYOffset(selectedMsgStartLine)
+		} else if selectedMsgEndLine >= m.viewport.YOffset + m.viewport.Height {
+			m.viewport.SetYOffset(selectedMsgEndLine - m.viewport.Height + 1)
+		}
+	}
+}
+
+// Helper function to render scrollable lists
+func (m model) renderScrollableList(items []string, cursor int, maxHeight int) string {
+	if maxHeight < 5 { maxHeight = 5 }
+
+	start := 0
+	if cursor >= maxHeight {
+		start = cursor - maxHeight + 1
+	}
+	end := start + maxHeight
+	if end > len(items) {
+		end = len(items)
+	}
+
+	var s strings.Builder
+	if start > 0 {
+		s.WriteString(fmt.Sprintf("  ↑ (%d more)\n", start))
+	}
+	for i := start; i < end; i++ {
+		c := " "
+		style := lipgloss.NewStyle()
+		if i == cursor {
+			c = ">"
+			style = style.Foreground(colorCyan).Bold(true)
+		}
+		s.WriteString(style.Render(fmt.Sprintf("%s %s", c, items[i])) + "\n")
+	}
+	if end < len(items) {
+		s.WriteString(fmt.Sprintf("  ↓ (%d more)\n", len(items)-end))
+	}
+	return s.String()
 }
 
 func (m model) View() string {
@@ -809,19 +864,19 @@ func (m model) View() string {
 	}
 
 	if m.state == stateAttachmentList {
-		s := "Manage Attachments (Ctrl+L)\n\n"
-		if len(m.attachments) == 0 {
-			s += "No files attached.\nPress Esc to return."
-		} else {
-			for i, a := range m.attachments {
-				cursor := " "
-				style := lipgloss.NewStyle()
-				if m.attachCursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
-				s += style.Render(fmt.Sprintf("%s %s (%d chars)", cursor, a.Name, len(a.Text))) + "\n"
-			}
-			s += "\n↑/↓ Select • Shift+X Delete • Shift+S Replace • Shift+N Edit in Nano • Esc/Ctrl+S Save & Return"
+		var items []string
+		for _, a := range m.attachments {
+			items = append(items, fmt.Sprintf("%s (%d chars)", a.Name, len(a.Text)))
 		}
-		return lipgloss.NewStyle().Margin(1, 2).Render(s)
+
+		title := "Manage Attachments (Ctrl+L)\n\n"
+		if len(m.attachments) == 0 {
+			title += "No files attached.\nPress Esc to return."
+		} else {
+			title += m.renderScrollableList(items, m.attachCursor, m.height-8)
+			title += "\n↑/↓ Select • Shift+X Delete • Shift+S Replace • Shift+N Edit in Nano • Esc/Ctrl+S Save & Return"
+		}
+		return lipgloss.NewStyle().Margin(1, 2).Render(title)
 	}
 
 	if m.state == stateSystemPrompt {
@@ -840,26 +895,24 @@ func (m model) View() string {
 	}
 
 	if m.state == stateHistory {
-		s := "Select a chat history to load (Up/Down, Enter to load, Esc to cancel):\n\n"
-		if len(m.historyFiles) == 0 { s += "No saved histories found.\n" }
-		for i, choice := range m.historyFiles {
-			cursor := " "
-			style := lipgloss.NewStyle()
-			if m.historyCursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
-			s += style.Render(fmt.Sprintf("%s %s", cursor, filepath.Base(choice))) + "\n"
+		var items []string
+		for _, f := range m.historyFiles {
+			items = append(items, filepath.Base(f))
 		}
-		return lipgloss.NewStyle().Margin(1, 2).Render(s)
+
+		title := "Select a chat history to load (Up/Down, Enter to load, Esc to cancel):\n\n"
+		if len(items) == 0 {
+			title += "No saved histories found.\n"
+		} else {
+			title += m.renderScrollableList(items, m.historyCursor, m.height-8)
+		}
+		return lipgloss.NewStyle().Margin(1, 2).Render(title)
 	}
 
 	if m.state == stateSelectModel {
-		s := "Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
-		for i, choice := range m.models {
-			cursor := " "
-			style := lipgloss.NewStyle()
-			if m.cursor == i { cursor = ">"; style = style.Foreground(colorCyan).Bold(true) }
-			s += style.Render(fmt.Sprintf("%s %s", cursor, choice)) + "\n"
-		}
-		return lipgloss.NewStyle().Margin(1, 2).Render(s)
+		title := "Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
+		title += m.renderScrollableList(m.models, m.cursor, m.height-8)
+		return lipgloss.NewStyle().Margin(1, 2).Render(title)
 	}
 
 	// --- CHAT STATE UI ---
@@ -885,7 +938,7 @@ func (m model) View() string {
 	} else if m.isThinking {
 		statusText = lipgloss.NewStyle().Foreground(colorRed).Render("Thinking... (Alt+S to stop)")
 	} else if m.focusMode == "list" {
-		statusText = lipgloss.NewStyle().Foreground(colorPurple).Render("[LIST] w/z/s Scroll • ↑/↓ Select • C Copy • N New • S Switch • P Prompt • J Save • B Branch • Ctrl+O Hist • Ctrl+L Attach")
+		statusText = lipgloss.NewStyle().Foreground(colorPurple).Render("[LIST] w/z/s Scroll • ↑/↓ Select • C Copy • N New • S Switch • P Prompt • J Save • B Branch • Ctrl+O Hist")
 	} else {
 		if len(m.attachments) > 0 {
 			statusText = lipgloss.NewStyle().Foreground(colorYellow).Bold(true).Render(fmt.Sprintf("[%d Attached] ", len(m.attachments))) + "[CHAT MODE] Ctrl+L to manage • Tab for list"
@@ -949,7 +1002,7 @@ func main() {
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 		os.Exit(1)
 	}
 }
