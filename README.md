@@ -79,6 +79,8 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Key | Mode | Action |
 | --- | --- | --- |
 | Tab / Esc | Any | Toggle between Chat Mode and List Mode |
+| Ctrl + F | Chat | Upload attachments by writing a path or drag-and-dropping files |
+| Ctrl + L | Chat | List attached attachments and edit them |
 | Enter | Chat | Send message to AI |
 | Alt + S | Any | Cancel the AI mid-generation |
 | w / z / s | List | Scroll up / down (Supports AZERTY & QWERTY) |
