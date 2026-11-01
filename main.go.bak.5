@@ -1,0 +1,544 @@
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"time"
+
+	"github.com/atotto/clipboard"
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+// --- Ollama API Structs ---
+type OllamaModel struct {
+	Name string `json:"name"`
+}
+type OllamaTags struct {
+	Models []OllamaModel `json:"models"`
+}
+type OllamaGenerateReq struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+	Stream bool   `json:"stream"`
+}
+type OllamaGenerateRes struct {
+	Response string `json:"response"`
+}
+
+// --- App Models ---
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type state int
+
+const (
+	stateLoading state = iota
+	stateSelectModel
+	stateChat
+	stateHistory
+	stateExiting
+)
+
+// --- UI Styles ---
+var (
+	colorPurple = lipgloss.Color("135")
+	colorCyan   = lipgloss.Color("81")
+	colorGray   = lipgloss.Color("240")
+	colorGreen  = lipgloss.Color("42")
+	colorRed    = lipgloss.Color("196")
+	colorYellow = lipgloss.Color("220")
+
+	userLabelStyle = lipgloss.NewStyle().Foreground(colorCyan).Bold(true)
+	aiLabelStyle   = lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
+
+	headerStyle   = lipgloss.NewStyle().Foreground(colorGray).Border(lipgloss.NormalBorder(), false, false, true, false).Padding(0, 1)
+	textareaStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorGray).Padding(0, 1)
+	statusStyle   = lipgloss.NewStyle().Foreground(colorGray).Padding(0, 1)
+)
+
+type model struct {
+	state            state
+	models           []string
+	cursor           int
+	messages         []ChatMessage
+	selectedMsg      int
+	focusMode        string
+	statusMsg        string
+	viewport         viewport.Model
+	textarea         textarea.Model
+	ollamaCmd        *exec.Cmd
+	err              error
+	streamChan       chan string
+	isThinking       bool
+	autoScroll       bool
+	isSwitchingModel bool
+	historyFiles     []string
+	historyCursor    int
+	width            int
+	height           int
+}
+
+// Init runs when the app starts
+func (m model) Init() tea.Cmd {
+	return func() tea.Msg {
+		cmd := exec.Command("ollama", "serve")
+		cmd.Start()
+		time.Sleep(1 * time.Second)
+
+		resp, err := http.Get("http://localhost:11434/api/tags")
+		if err != nil {
+			return errMsg{err}
+		}
+		defer resp.Body.Close()
+
+		var tags OllamaTags
+		json.NewDecoder(resp.Body).Decode(&tags)
+
+		var modelNames []string
+		for _, m := range tags.Models {
+			modelNames = append(modelNames, m.Name)
+		}
+
+		return modelsFetchedMsg{models: modelNames}
+	}
+}
+
+// Custom Messages
+type modelsFetchedMsg struct{ models []string }
+type errMsg struct{ err error }
+func (e errMsg) Error() string { return e.err.Error() }
+type clearStatusMsg struct{}
+type historyFilesMsg struct{ files []string }
+
+func waitForStream(ch chan string) tea.Cmd {
+	return func() tea.Msg {
+		text, ok := <-ch
+		if !ok { return streamDoneMsg{} }
+		return streamChunkMsg(text)
+	}
+}
+
+type streamChunkMsg string
+type streamDoneMsg struct{}
+
+func startGenerate(modelName, prompt string, ch chan string) tea.Cmd {
+	return func() tea.Msg {
+		reqBody, _ := json.Marshal(OllamaGenerateReq{
+			Model: modelName, Prompt: prompt, Stream: true,
+		})
+
+		resp, err := http.Post("http://localhost:11434/api/generate", "application/json", bytes.NewBuffer(reqBody))
+		if err != nil {
+			ch <- fmt.Sprintf("\n[Error: %v]\n", err)
+			close(ch)
+			return nil
+		}
+		defer resp.Body.Close()
+
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			var res OllamaGenerateRes
+			json.Unmarshal(scanner.Bytes(), &res)
+			if res.Response != "" { ch <- res.Response }
+		}
+		close(ch)
+		return nil
+	}
+}
+
+func loadHistoryFiles() tea.Msg {
+	dir := os.Getenv("HOME") + "/.local/share/ollama-tui"
+	files, _ := filepath.Glob(dir + "/*.json")
+	sort.Sort(sort.Reverse(sort.StringSlice(files)))
+	return historyFilesMsg{files: files}
+}
+
+// Update handles messages and user input
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			m.width = msg.Width
+			m.height = msg.Height
+			m.viewport.Width = msg.Width - 4
+			m.viewport.Height = msg.Height - 10
+			m.textarea.SetWidth(msg.Width - 6)
+			m.updateViewport()
+
+		case clearStatusMsg:
+			m.statusMsg = ""
+
+		case modelsFetchedMsg:
+			m.models = msg.models
+			m.state = stateSelectModel
+
+		case historyFilesMsg:
+			m.historyFiles = msg.files
+			m.historyCursor = 0
+			m.state = stateHistory
+
+		case streamChunkMsg:
+			m.messages[len(m.messages)-1].Content += string(msg)
+			m.updateViewport()
+			if m.autoScroll { m.viewport.GotoBottom() }
+			cmds = append(cmds, waitForStream(m.streamChan))
+
+		case streamDoneMsg:
+			m.isThinking = false
+
+		case errMsg:
+			m.err = msg
+			return m, tea.Quit
+
+		case tea.KeyMsg:
+			if msg.String() == "ctrl+c" {
+				if m.state == stateChat || m.state == stateHistory {
+					m.state = stateExiting
+					m.textarea.Blur()
+				} else {
+					return m, tea.Quit
+				}
+			}
+
+			if m.state == stateExiting {
+				if msg.String() == "y" || msg.String() == "Y" {
+					if m.ollamaCmd != nil && m.ollamaCmd.Process != nil {
+						m.ollamaCmd.Process.Kill()
+					}
+					return m, tea.Quit
+				}
+				if msg.String() == "n" || msg.String() == "N" { return m, tea.Quit }
+				return m, nil
+			}
+
+			if m.state == stateHistory {
+				switch msg.String() {
+					case "esc":
+						m.state = stateChat
+						m.focusMode = "list"
+					case "up", "k":
+						if m.historyCursor > 0 { m.historyCursor-- }
+					case "down", "j":
+						if m.historyCursor < len(m.historyFiles)-1 { m.historyCursor++ }
+					case "enter":
+						if len(m.historyFiles) > 0 {
+							data, err := os.ReadFile(m.historyFiles[m.historyCursor])
+							if err == nil {
+								json.Unmarshal(data, &m.messages)
+								m.state = stateChat
+								m.focusMode = "list"
+								m.selectedMsg = len(m.messages) - 1
+								m.autoScroll = true
+								m.updateViewport()
+								m.viewport.GotoBottom()
+								m.statusMsg = "Loaded history."
+							}
+						}
+				}
+				return m, nil
+			}
+
+			if m.state == stateSelectModel {
+				switch msg.String() {
+					case "up", "k":
+						if m.cursor > 0 { m.cursor-- }
+					case "down", "j":
+						if m.cursor < len(m.models)-1 { m.cursor++ }
+					case "enter":
+						m.state = stateChat
+						m.focusMode = "textarea"
+						m.selectedMsg = -1
+						m.autoScroll = true
+
+						if m.isSwitchingModel {
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Switched model to: %s", m.models[m.cursor])})
+							m.isSwitchingModel = false
+						} else if len(m.messages) == 0 {
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Loaded model: %s", m.models[m.cursor])})
+						}
+
+						m.updateViewport()
+						m.textarea.Focus()
+				}
+				return m, nil
+			}
+
+			if m.state == stateChat {
+				if msg.String() == "tab" || msg.String() == "esc" {
+					if m.focusMode == "textarea" {
+						m.focusMode = "list"
+						m.textarea.Blur()
+						if m.selectedMsg == -1 { m.selectedMsg = len(m.messages) - 1 }
+					} else {
+						m.focusMode = "textarea"
+						m.textarea.Focus()
+					}
+					m.updateViewport()
+					return m, nil
+				}
+
+				if m.focusMode == "list" {
+					switch msg.String() {
+						case "up", "k":
+							if m.selectedMsg > 0 { m.selectedMsg--; m.autoScroll = false; m.updateViewport() }
+						case "down", "j":
+							if m.selectedMsg < len(m.messages)-1 {
+								m.selectedMsg++
+								if m.selectedMsg == len(m.messages)-1 { m.autoScroll = true }
+								m.updateViewport()
+							}
+						case "z", "w":
+							m.viewport.LineUp(1)
+							m.autoScroll = false
+						case "s":
+							m.viewport.LineDown(1)
+						case "C":
+							if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
+								clipboard.WriteAll(m.messages[m.selectedMsg].Content)
+								m.statusMsg = "Copied to clipboard!"
+								cmds = append(cmds, func() tea.Msg { time.Sleep(2 * time.Second); return clearStatusMsg{} })
+							}
+						case "N":
+							m.messages = []ChatMessage{{Role: "System", Content: fmt.Sprintf("Started new chat with %s", m.models[m.cursor])}}
+							m.selectedMsg = 0
+							m.autoScroll = true
+							m.updateViewport()
+							m.statusMsg = "Started new chat."
+						case "S":
+							m.state = stateSelectModel
+							m.isSwitchingModel = true
+						case "J":
+							_ = os.MkdirAll(os.Getenv("HOME")+"/.local/share/ollama-tui", 0755)
+							filename := fmt.Sprintf("chat_%s.json", time.Now().Format("20060102_150405"))
+							path := os.Getenv("HOME") + "/.local/share/ollama-tui/" + filename
+							data, _ := json.MarshalIndent(m.messages, "", "  ")
+							_ = os.WriteFile(path, data, 0644)
+							m.statusMsg = "Saved: " + filename
+							cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
+						case "B":
+							if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
+								m.messages = m.messages[:m.selectedMsg+1]
+								m.messages = append(m.messages, ChatMessage{Role: "System", Content: "--- Branched from here ---"})
+								m.selectedMsg = len(m.messages) - 1
+								m.autoScroll = true
+								m.updateViewport()
+								m.statusMsg = "Branched chat."
+							}
+						case "ctrl+o":
+							return m, loadHistoryFiles
+					}
+					return m, tea.Batch(cmds...)
+				}
+
+				if m.focusMode == "textarea" && !m.isThinking {
+					var cmd tea.Cmd
+					m.textarea, cmd = m.textarea.Update(msg)
+					cmds = append(cmds, cmd)
+
+					if msg.String() == "enter" && m.textarea.Value() != "" {
+						userPrompt := m.textarea.Value()
+						m.messages = append(m.messages, ChatMessage{Role: "You", Content: userPrompt})
+						m.messages = append(m.messages, ChatMessage{Role: "AI", Content: ""})
+
+						m.selectedMsg = -1
+						m.streamChan = make(chan string)
+						m.isThinking = true
+						m.autoScroll = true
+
+						m.textarea.Reset()
+						m.updateViewport()
+						m.viewport.GotoBottom()
+
+						cmds = append(cmds, startGenerate(m.models[m.cursor], userPrompt, m.streamChan))
+						cmds = append(cmds, waitForStream(m.streamChan))
+					}
+				}
+			}
+	}
+
+	return m, tea.Batch(cmds...)
+}
+
+// 🚨 THE NEW CLEAN SELECTION LOGIC 🚨
+func (m *model) updateViewport() {
+	var rendered []string
+	textWidth := m.viewport.Width - 3 // Leave room for the pointer (" > ")
+
+	for i, msg := range m.messages {
+		isSelected := (i == m.selectedMsg && m.focusMode == "list")
+
+		var label string
+		if msg.Role == "You" {
+			label = "You:"
+		} else if msg.Role == "AI" {
+			label = "AI:"
+		} else {
+			label = "•"
+		}
+
+		// 1. The Pointer
+		pointer := "   "
+		if isSelected {
+			pointer = lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(" > ")
+		}
+
+		// 2. The Label (Highlighted if selected)
+		var styledLabel string
+		if isSelected {
+			bg := colorCyan
+			if msg.Role == "AI" { bg = colorPurple }
+			if msg.Role == "System" { bg = colorGray }
+			// Highlight the label text with a solid background
+			styledLabel = lipgloss.NewStyle().Background(bg).Foreground(lipgloss.Color("0")).Bold(true).Render(" " + label + " ")
+		} else {
+			if msg.Role == "You" {
+				styledLabel = userLabelStyle.Render(label)
+			} else if msg.Role == "AI" {
+				styledLabel = aiLabelStyle.Render(label)
+			} else {
+				styledLabel = lipgloss.NewStyle().Foreground(colorGray).Italic(true).Render(label)
+			}
+		}
+
+		// 3. The Content
+		labelWidth := lipgloss.Width(styledLabel)
+		wrapWidth := textWidth - labelWidth - 1
+		if wrapWidth < 10 { wrapWidth = 10 }
+
+		wrappedText := lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
+		lines := strings.Split(wrappedText, "\n")
+
+		var combined []string
+		// First line: Label + space + text
+		combined = append(combined, styledLabel+" "+lines[0])
+
+		// Subsequent lines: indent to align with the text
+		indent := strings.Repeat(" ", labelWidth+1)
+		for j := 1; j < len(lines); j++ {
+			combined = append(combined, indent+lines[j])
+		}
+
+		block := strings.Join(combined, "\n")
+		// Join the pointer and the block horizontally so the pointer aligns at the top
+		rendered = append(rendered, lipgloss.JoinHorizontal(lipgloss.Top, pointer, block))
+	}
+
+	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, rendered...))
+}
+
+func (m model) View() string {
+	if m.err != nil { return fmt.Sprintf("Error: %v\n", m.err) }
+	if m.state == stateLoading { return "\n  Connecting to Ollama and fetching models...\n" }
+	if m.state == stateExiting { return "\n  Do you want to stop the Ollama server? (y/n)\n" }
+
+	if m.state == stateHistory {
+		s := "\n  Select a chat history to load (Up/Down, Enter to load, Esc to cancel):\n\n"
+		if len(m.historyFiles) == 0 {
+			s += "  No saved histories found in ~/.local/share/ollama-tui/\n"
+		}
+		for i, choice := range m.historyFiles {
+			cursor := " "
+			style := lipgloss.NewStyle()
+			if m.historyCursor == i {
+				cursor = ">"
+				style = style.Foreground(colorCyan).Bold(true)
+			}
+			s += style.Render(fmt.Sprintf("  %s %s", cursor, filepath.Base(choice))) + "\n"
+		}
+		return s
+	}
+
+	if m.state == stateSelectModel {
+		s := "\n  Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
+		for i, choice := range m.models {
+			cursor := " "
+			style := lipgloss.NewStyle()
+			if m.cursor == i {
+				cursor = ">"
+				style = style.Foreground(colorCyan).Bold(true)
+			}
+			s += style.Render(fmt.Sprintf("  %s %s", cursor, choice)) + "\n"
+		}
+		return s
+	}
+
+	// --- CHAT STATE UI ---
+	modelName := m.models[m.cursor]
+
+	totalChars := 0
+	for _, msg := range m.messages { totalChars += len(msg.Content) }
+	approxTokens := totalChars / 4
+	contextLimit := 4096
+	percent := (float64(approxTokens) / float64(contextLimit)) * 100
+
+	meterColor := colorGreen
+	if percent > 75 { meterColor = colorYellow }
+	if percent > 90 { meterColor = colorRed }
+
+	meter := lipgloss.NewStyle().Foreground(meterColor).Render(fmt.Sprintf("[%.0f%% Context]", percent))
+	header := headerStyle.Render(fmt.Sprintf("Model: %s  %s", aiLabelStyle.Render(modelName), meter))
+
+	vpView := m.viewport.View()
+	taView := textareaStyle.Render(m.textarea.View())
+
+	var statusText string
+	if m.statusMsg != "" {
+		statusText = lipgloss.NewStyle().Foreground(colorGreen).Render(m.statusMsg)
+	} else if m.isThinking {
+		statusText = lipgloss.NewStyle().Foreground(colorRed).Render("Thinking...")
+	} else if m.focusMode == "list" {
+		statusText = lipgloss.NewStyle().Foreground(colorPurple).Render("[LIST] z/s Scroll • ↑/↓ Select • C Copy • N New • S Switch • J Save • B Branch • Ctrl+O History")
+	} else {
+		statusText = "[CHAT MODE] Tab to switch to list mode"
+	}
+	status := statusStyle.Render(statusText)
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		vpView,
+		taView,
+		status,
+	)
+}
+
+func main() {
+	ta := textarea.New()
+	ta.Placeholder = "Send a message..."
+	ta.Focus()
+	ta.Prompt = "┃ "
+	ta.CharLimit = 1000
+	ta.SetHeight(3)
+	ta.ShowLineNumbers = false
+
+	vp := viewport.New(80, 20)
+
+	m := model{
+		state:       stateLoading,
+		textarea:    ta,
+		viewport:    vp,
+		focusMode:   "textarea",
+		selectedMsg: -1,
+		autoScroll:  true,
+	}
+
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Error: %v", err)
+		os.Exit(1)
+	}
+}
