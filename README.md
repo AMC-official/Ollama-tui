@@ -30,6 +30,7 @@ To copy text to your clipboard, the `atotto/clipboard` library requires `xclip`.
 
 * **FreeBSD:** `sudo pkg install xclip`
 * **Debian/Ubuntu:** `sudo apt install xclip`
+* **RHEL/Fedora:** `sudo dnf install xclip`
 * **Arch/Artix:** `sudo pacman -S xclip`
 * **macOS:** No extra dependencies needed.
 
