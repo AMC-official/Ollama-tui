@@ -5,17 +5,19 @@ before:
     - go mod tidy
 
 builds:
-  - main: .
+  - id: default
+    main: .
     binary: ollama-tui
-    env:
-      - CGO_ENABLED=0 # Safest for cross-compilation on Ubuntu runners
     goos:
       - linux
       - windows
       - darwin
     goarch:
       - amd64
-      # - arm64  <-- We are removing arm64 because Ubuntu can't build CGO for it natively.
+      - arm64
+      - "386"
+    env:
+      - CGO_ENABLED=0
 
 archives:
   - id: default
