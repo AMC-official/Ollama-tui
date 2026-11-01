@@ -1,8 +1,8 @@
 # Ollama-TUI 🦙💻
 
-A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go. 
+A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on **FreeBSD**, but designed to be universally cross-platform.
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and macOS, it keeps the experience fast, keyboard-driven, and distraction-free.
 
 ## ✨ Features
 
@@ -25,7 +25,9 @@ Before you build or run this, ensure you have:
 3. **At least one model pulled** (e.g., `ollama pull gemma3:1b`).
 
 ### 🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
+
 To copy text to your clipboard, the `atotto/clipboard` library requires `xclip`.
+
 * **FreeBSD:** `sudo pkg install xclip`
 * **Debian/Ubuntu:** `sudo apt install xclip`
 * **Arch/Artix:** `sudo pacman -S xclip`
@@ -36,73 +38,71 @@ To copy text to your clipboard, the `atotto/clipboard` library requires `xclip`.
 ## 🚀 Installation
 
 ### 1. Clone & Build
+
 ```bash
-git clone https://github.com/yourusername/ollama-tui.git
-cd ollama-tui
+git clone https://github.com/AMC-official/Ollama-tui.git
+cd Ollama-tui
 go mod tidy
 ```
 
-🚀 Installation
-1. Clone & Build
-```bash
-
-git clone https://github.com/yourusername/ollama-tui.git
-cd ollama-tui
-go mod tidy
-```
-
-2. Run the Installer
+### 2. Run the Installer
 
 For POSIX (Linux, FreeBSD, macOS):
-```bash
 
+```bash
 chmod +x install.sh
 ./install.sh
 ```
 
 For Windows (PowerShell):
-```powershell
 
+```powershell
 .\install.ps1
 ```
 
-3. Manual Run (Without Installing)
-```bash
+### 3. Manual Run (Without Installing)
 
+```bash
 go run main.go
 ```
 
-⌨️ Keybindings
+---
+
+## ⌨️ Keybindings
 
 Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List Mode (navigating).
-Key	Mode	Action
-Tab / Esc	Any	Toggle between Chat Mode and List Mode
-Enter	Chat	Send message to AI
-Alt + S	Any	Cancel the AI mid-generation
-w / z / s	List	Scroll up / down (Supports AZERTY & QWERTY)
-Up / Down	List	Select a specific message
-Shift + C	List	Copy the selected message to clipboard
-Shift + N	List	Start a completely new chat
-Shift + S	List	Switch to a different Ollama model
-Shift + P	List	Open the System Prompt editor
-Shift + J	List	Save current chat to .json
-Shift + B	List	Branch the chat from the selected message
-Ctrl + O	List	Open the Chat History browser
-Ctrl + C	Any	Exit app (prompts to kill Ollama server)
-🖥️ Platform Support
-``
-    - FreeBSD / OpenBSD / NetBSD: Fully supported natively.
-    - Linux (Arch, Debian, Fedora, etc.): Fully supported natively.
-    - macOS (Intel & Apple Silicon): Fully supported natively.
-    - Windows: Fully supported natively via cross-compilation (requires the .exe build).
 
-(Note: The Windows installer script is separate because Windows is not POSIX-compliant and handles background processes slightly differently).
-🛠️ Built With
-``
-    - Bubble Tea - The TUI framework.
-    - Lipgloss - Style definitions for nice terminal layouts.
-    - Ollama API - The local AI backend.
+| Key | Mode | Action |
+| --- | --- | --- |
+| Tab / Esc | Any | Toggle between Chat Mode and List Mode |
+| Enter | Chat | Send message to AI |
+| Alt + S | Any | Cancel the AI mid-generation |
+| w / z / s | List | Scroll up / down (Supports AZERTY & QWERTY) |
+| Up / Down | List | Select a specific message |
+| Shift + C | List | Copy the selected message to clipboard |
+| Shift + N | List | Start a completely new chat |
+| Shift + S | List | Switch to a different Ollama model |
+| Shift + P | List | Open the System Prompt editor |
+| Shift + J | List | Save current chat to `.json` |
+| Shift + B | List | Branch the chat from the selected message |
+| Ctrl + O | List | Open the Chat History browser |
+| Ctrl + C | Any | Exit app (prompts to kill Ollama server) |
 
-📄 License
+## 🖥️ Platform Support
 
-This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the LICENSE file for details.
+* FreeBSD / OpenBSD / NetBSD: Fully supported natively.
+* Linux (Arch, Debian, Fedora, etc.): Fully supported natively.
+* macOS (Intel & Apple Silicon): Fully supported natively.
+* Windows: Fully supported natively via cross-compilation (requires the `.exe` build).
+
+> Note: The Windows installer script is separate because Windows is not POSIX-compliant and handles background processes slightly differently.
+
+## 🛠️ Built With
+
+* Bubble Tea - The TUI framework.
+* Lipgloss - Style definitions for nice terminal layouts.
+* Ollama API - The local AI backend.
+
+## 📄 License
+
+This project is licensed under the GNU General Public License v3.0 (GPL-3.0). See the [LICENSE](LICENSE) file for details.
