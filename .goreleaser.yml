@@ -1,52 +1,32 @@
 version: 2
 
-project_name: ollama-tui
-
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: posix
-    main: .
+  - main: .
     binary: ollama-tui
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0 # Safest for cross-compilation on Ubuntu runners
     goos:
       - linux
+      - windows
       - darwin
     goarch:
       - amd64
-      - arm64
-
-  - id: windows
-    main: .
-    binary: ollama-tui
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - windows
-    goarch:
-      - amd64
-      - arm64
+      # - arm64  <-- We are removing arm64 because Ubuntu can't build CGO for it natively.
 
 archives:
-  - id: posix-archive
-    builds:
-      - posix
+  - id: default
     format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_linux_bsd_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Use format_overrides instead of the deprecated top-level format
+    format_overrides:
+      - goos: windows
+        format: zip
     files:
       - README.md
       - LICENSE
       - install.sh
-
-  - id: windows-archive
-    builds:
-      - windows
-    format: zip
-    name_template: "{{ .ProjectName }}_{{ .Version }}_windows_{{ .Arch }}"
-    files:
-      - README.md
-      - LICENSE
       - install.ps1
