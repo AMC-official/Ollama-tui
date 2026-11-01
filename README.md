@@ -18,7 +18,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
 * **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
-* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents. You can add, remove, or edit the attachment list before sending a message.
+* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.conf`. You can add, remove, or edit the attachment list before sending a message.
 
 ## 📦 Prerequisites
 
