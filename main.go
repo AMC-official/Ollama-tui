@@ -85,7 +85,7 @@ var (
 	aiLabelStyle   = lipgloss.NewStyle().Foreground(colorPurple).Bold(true)
 
 	headerStyle   = lipgloss.NewStyle().Foreground(colorGray).Border(lipgloss.NormalBorder(), false, false, true, false).Padding(0, 1)
-	textareaStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorGray).Padding(0, 1)
+	textareaStyle = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorGray).Padding(0, 2)
 	statusStyle   = lipgloss.NewStyle().Foreground(colorGray).Padding(0, 1)
 )
 
@@ -291,8 +291,13 @@ func stripXML(xmlContent string) string {
 }
 
 func processFile(path string) tea.Msg {
+	// 1. Trim spaces and quotes (handles drag & drop wrapping)
 	path = strings.TrimSpace(path)
 	path = strings.Trim(path, `"'`)
+
+	// 2. Clean the path (fixes slashes for Windows vs POSIX)
+	path = filepath.Clean(path)
+
 	ext := strings.ToLower(filepath.Ext(path))
 	var content string
 	var err error
@@ -348,9 +353,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.height = msg.Height
 			m.viewport.Width = msg.Width - 4
 			m.viewport.Height = msg.Height - 10
-			m.textarea.SetWidth(msg.Width - 6)
-			m.promptInput.SetWidth(msg.Width - 6)
-			m.fileInput.SetWidth(msg.Width - 10) // Account for borders and prompt
+			m.textarea.SetWidth(msg.Width - 8)
+			m.promptInput.SetWidth(msg.Width - 14)
+			m.fileInput.SetWidth(msg.Width - 14)
 			m.updateViewport()
 
 		case clearStatusMsg:
@@ -769,6 +774,7 @@ func (m *model) updateViewport() {
 
 	m.viewport.SetContent(lipgloss.JoinVertical(lipgloss.Left, rendered...))
 }
+
 func (m model) View() string {
 	if m.err != nil { return fmt.Sprintf("Error: %v\n", m.err) }
 
@@ -788,7 +794,6 @@ func (m model) View() string {
 		title := "Attach File (Ctrl+F)"
 		if m.swapIndex != -1 { title = "Replace Attachment (Shift+S)" }
 
-		// Make the box slightly narrower than the screen
 		box := textareaStyle.Width(m.width - 10).Render(m.fileInput.View())
 		help := lipgloss.NewStyle().Foreground(colorGray).Render("Drag & drop a file or type a path. Press Enter to attach, Esc to cancel.")
 
@@ -923,7 +928,7 @@ func main() {
 	fi.Prompt = "┃ "
 	fi.CharLimit = 500
 	fi.SetHeight(1)
-	fi.ShowLineNumbers = false // THIS FIXES THE WEIRD "1" IN THE BOX
+	fi.ShowLineNumbers = false
 
 	vp := viewport.New(80, 20)
 
