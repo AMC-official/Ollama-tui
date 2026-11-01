@@ -5,30 +5,52 @@ before:
     - go mod tidy
 
 builds:
-  - id: default
+  - id: posix
     main: .
     binary: ollama-tui
+    env:
+      - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
     goarch:
       - amd64
       - arm64
       - "386"
+
+  - id: windows
+    main: .
+    binary: ollama-tui
     env:
       - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+      - "386"
 
 archives:
-  - id: default
+  - id: posix-archive
+    builds:
+      - posix
     formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
-    # Use format_overrides instead of the deprecated top-level format
-    format_overrides:
-      - goos: windows
-        format: zip
     files:
       - README.md
       - LICENSE
       - install.sh
+      - src: install.sh
+        dst: install.sh
+
+  - id: windows-archive
+    builds:
+      - windows
+    formats: [zip]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE
       - install.ps1
+      - src: install.ps1
+        dst: install.ps1
