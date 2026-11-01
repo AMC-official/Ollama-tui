@@ -2,7 +2,7 @@
 
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and macOS with a focus on speed, simplicity, and local-first AI workflows.
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux, it aims to be fast, lightweight, and keyboard-driven.
 
 > Note: DeepSeek was used in the process of making this project to assist with development and iteration.
 
@@ -18,6 +18,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
 * **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
+* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.conf`. You can add, remove, or edit the attachment list before sending a message.
 
 ## 📦 Prerequisites
 
@@ -28,7 +29,7 @@ Before you build or run this, ensure you have:
 
 ### 🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
 
-To copy text to your clipboard, the `atotto/clipboard` library requires `xclip`.
+To copy text to the clipboard, the `atotto/clipboard` library requires `xclip`.
 
 * **FreeBSD:** `sudo pkg install xclip`
 * **Debian/Ubuntu:** `sudo apt install xclip`
@@ -78,6 +79,8 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Key | Mode | Action |
 | --- | --- | --- |
 | Tab / Esc | Any | Toggle between Chat Mode and List Mode |
+| Ctrl + F | Chat | Upload attachments by writing a path or drag-and-dropping files |
+| Ctrl + L | Chat | List attached attachments and edit them |
 | Enter | Chat | Send message to AI |
 | Alt + S | Any | Cancel the AI mid-generation |
 | w / z / s | List | Scroll up / down (Supports AZERTY & QWERTY) |
