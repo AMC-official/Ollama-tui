@@ -2,7 +2,9 @@
 
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and macOS, it keeps the experience fast, keyboard-driven, and distraction-free.
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and macOS with a focus on speed, simplicity, and local-first AI workflows.
+
+> Note: DeepSeek was used in the process of making this project to assist with development and iteration.
 
 ## ✨ Features
 
