@@ -13,6 +13,9 @@ builds:
     goos:
       - linux
       - darwin
+      - freebsd
+      - openbsd
+      - netbsd
     goarch:
       - amd64
       - arm64
@@ -40,8 +43,6 @@ archives:
       - README.md
       - LICENSE
       - install.sh
-      - src: install.sh
-        dst: install.sh
 
   - id: windows-archive
     builds:
@@ -52,5 +53,3 @@ archives:
       - README.md
       - LICENSE
       - install.ps1
-      - src: install.ps1
-        dst: install.ps1

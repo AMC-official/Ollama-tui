@@ -1,8 +1,13 @@
-Write-Host "Building ollama-tui..." -ForegroundColor Cyan
-go build -o ollama-tui.exe main.go
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Build failed!" -ForegroundColor Red
-    exit
+$ErrorActionPreference = "Stop"
+
+if (Test-Path "main.go") {
+    Write-Host "Source code detected. Building ollama-tui..." -ForegroundColor Cyan
+    go build -o ollama-tui.exe main.go
+} elseif (Test-Path "ollama-tui.exe") {
+    Write-Host "Pre-compiled binary detected." -ForegroundColor Cyan
+} else {
+    Write-Host "Error: Neither main.go nor ollama-tui.exe found." -ForegroundColor Red
+    exit 1
 }
 
 $installPath = "$env:USERPROFILE\bin"
