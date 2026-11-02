@@ -22,8 +22,6 @@
   <i>List Mode: Vim-style navigation, copy to clipboard, and branching history.</i>
 </div>
 
-...
-
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
 Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on FreeBSD, it aims to be fast, lightweight, and keyboard-driven. and to be as crossplatform as possible, running on Windows, MacOS, Linux, and BSD systems
