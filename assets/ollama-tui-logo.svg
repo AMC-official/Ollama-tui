@@ -8,7 +8,7 @@
    version="1.1"
    id="svg1"
    inkscape:version="1.4.4 (dcaf3e7d9e, 2026-05-05)"
-   sodipodi:docname="ollama-ascii-dark.svg"
+   sodipodi:docname="ollama-tui-logo.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -31,13 +31,14 @@
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g32" />
   <defs
      id="defs1" />
   <g
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     style="display:inline">
     <rect
        style="fill:#000000;fill-rule:evenodd;stroke:#000000;stroke-width:57.0008;stroke-opacity:1"
        id="rect21"
@@ -65,7 +66,7 @@
              transform="translate(-193.71248,141.05732)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan32">/</tspan></text>
+               id="tspan1">/</tspan></text>
           <text
              xml:space="preserve"
              style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#232323;fill-opacity:1;fill-rule:evenodd;stroke:#404040;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -75,7 +76,7 @@
              transform="translate(-216.29779,555.67761)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan33">\</tspan></text>
+               id="tspan2">\</tspan></text>
         </g>
         <g
            id="g4"
@@ -90,7 +91,7 @@
              transform="translate(-193.71248,141.05732)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan34">/</tspan></text>
+               id="tspan3">/</tspan></text>
           <text
              xml:space="preserve"
              style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#232323;fill-opacity:1;fill-rule:evenodd;stroke:#404040;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -100,7 +101,7 @@
              transform="translate(-171.37857,564.8665)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan35">\</tspan></text>
+               id="tspan4">\</tspan></text>
         </g>
         <g
            id="g13"
@@ -115,7 +116,7 @@
              transform="translate(934.83751,545.33505)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan36">/</tspan></text>
+               id="tspan5">/</tspan></text>
           <text
              xml:space="preserve"
              style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#232323;fill-opacity:1;fill-rule:evenodd;stroke:#414141;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -125,7 +126,7 @@
              transform="translate(916.09329,115.30602)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan37">\</tspan></text>
+               id="tspan12">\</tspan></text>
         </g>
         <g
            id="g15"
@@ -140,7 +141,7 @@
              transform="translate(934.83751,545.33505)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan38">/</tspan></text>
+               id="tspan13">/</tspan></text>
           <text
              xml:space="preserve"
              style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#232323;fill-opacity:1;fill-rule:evenodd;stroke:#404040;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -150,7 +151,7 @@
              transform="translate(916.09329,115.30602)"><tspan
                x="555.21765"
                y="639.72827"
-               id="tspan39">\</tspan></text>
+               id="tspan14">\</tspan></text>
         </g>
         <text
            xml:space="preserve"
@@ -167,14 +168,14 @@
         <text
            xml:space="preserve"
            style="font-size:200.572px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:4.34322px;writing-mode:lr-tb;direction:ltr;white-space:pre;fill:#232323;fill-opacity:1;fill-rule:evenodd;stroke:#3e3e3e;stroke-width:28.2762;stroke-dasharray:none;stroke-opacity:1"
-           x="48.597996"
-           y="-658.4447"
+           x="35.350555"
+           y="-671.1955"
            id="text24"
-           transform="matrix(0,0.94587177,-1.0572258,0,0,0)"><tspan
+           transform="matrix(0,0.94587175,-1.0572258,0,0,0)"><tspan
              sodipodi:role="line"
              id="tspan24"
-             x="48.597996"
-             y="-658.4447"
+             x="35.350555"
+             y="-671.1955"
              style="fill:#232323;fill-opacity:1;stroke:#3e3e3e;stroke-width:28.2762;stroke-opacity:1">&lt;</tspan></text>
         <text
            xml:space="preserve"
@@ -264,7 +265,8 @@
     </g>
     <g
        id="g1"
-       transform="matrix(0.92567434,0,0,1.0188004,40.514885,-20.168544)">
+       transform="matrix(0.92567434,0,0,1.0188004,40.514885,-20.168544)"
+       style="display:inline">
       <g
          id="g7"
          style="fill:#ffffff"
@@ -278,7 +280,7 @@
            transform="translate(-193.71248,141.05732)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan40">/</tspan></text>
+             id="tspan15">/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -288,7 +290,7 @@
            transform="translate(-216.29779,555.67761)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan41">\</tspan></text>
+             id="tspan16">\</tspan></text>
       </g>
       <g
          id="g7-1"
@@ -303,7 +305,7 @@
            transform="translate(-193.71248,141.05732)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan42">/</tspan></text>
+             id="tspan17">/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -313,7 +315,7 @@
            transform="translate(-171.37857,564.8665)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan43">\</tspan></text>
+             id="tspan18">\</tspan></text>
       </g>
       <g
          id="g8"
@@ -328,7 +330,7 @@
            transform="translate(934.83751,545.33505)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan44">/</tspan></text>
+             id="tspan19">/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -338,7 +340,7 @@
            transform="translate(916.09329,115.30602)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan45">\</tspan></text>
+             id="tspan20">\</tspan></text>
       </g>
       <g
          id="g8-8"
@@ -353,7 +355,7 @@
            transform="translate(934.83751,545.33505)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan46">/</tspan></text>
+             id="tspan21">/</tspan></text>
         <text
            xml:space="preserve"
            style="font-size:354.667px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:7.68px;writing-mode:lr-tb;direction:ltr;white-space:pre;inline-size:332.463;display:inline;fill:#ffffff;fill-rule:evenodd;stroke:#ffffff;stroke-width:50;stroke-dasharray:none;stroke-opacity:1"
@@ -363,7 +365,7 @@
            transform="translate(916.09329,115.30602)"><tspan
              x="555.21765"
              y="639.72827"
-             id="tspan47">\</tspan></text>
+             id="tspan22">\</tspan></text>
       </g>
       <text
          xml:space="preserve"
@@ -380,14 +382,14 @@
       <text
          xml:space="preserve"
          style="font-size:200.572px;line-height:1.2;font-family:'DejaVu Math TeX Gyre';-inkscape-font-specification:'DejaVu Math TeX Gyre';letter-spacing:4.34322px;writing-mode:lr-tb;direction:ltr;white-space:pre;fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:#f9f9f9;stroke-width:28.2762;stroke-dasharray:none;stroke-opacity:1"
-         x="48.597996"
-         y="-658.4447"
+         x="34.02581"
+         y="-671.1955"
          id="text6-4"
-         transform="matrix(0,0.94587177,-1.0572258,0,0,0)"><tspan
+         transform="matrix(0,0.94587175,-1.0572258,0,0,0)"><tspan
            sodipodi:role="line"
            id="tspan6-7"
-           x="48.597996"
-           y="-658.4447"
+           x="34.02581"
+           y="-671.1955"
            style="stroke-width:28.2762">&lt;</tspan></text>
       <text
          xml:space="preserve"
@@ -472,7 +474,7 @@
            id="tspan11-0"
            x="476.39746"
            y="760.94556"
-           style="stroke-width:28.2762;fill:#4d4d4d">-</tspan></text>
+           style="fill:#4d4d4d;stroke-width:28.2762">-</tspan></text>
     </g>
   </g>
 </svg>
