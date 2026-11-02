@@ -22,7 +22,7 @@
   <i>List Mode: Vim-style navigation, copy to clipboard, and branching history.</i>
 </div>
 
-
+--------------------------------------------
 
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
