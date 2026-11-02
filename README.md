@@ -1,5 +1,29 @@
 # Ollama-TUI 🦙💻
 
+<div align="center">
+  <img src="assets/ollama-tui-logo.svg" width="150" alt="Ollama-TUI ASCII Icon" />
+  <br>
+  <i>The official logo of Ollama TUI.</i>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="assets/ollama-tui-usage-chat-mode.png" width="80%" alt="Chat Mode" />
+  <br>
+  <i>Chat Mode: Native markdown streaming, branch selection, and context meters.</i>
+</div>
+
+<br>
+
+<div align="center">
+  <img src="assets/ollama-list-mode.png" width="80%" alt="List Mode" />
+  <br>
+  <i>List Mode: Vim-style navigation, copy to clipboard, and branching history.</i>
+</div>
+
+--------------------------------------------
+
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
 Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on FreeBSD, it aims to be fast, lightweight, and keyboard-driven. and to be as crossplatform as possible, running on Windows, MacOS, Linux, and BSD systems
