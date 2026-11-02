@@ -1,7 +1,5 @@
 # Ollama-TUI 🦙💻
 
-# Ollama-TUI 🦙💻
-
 <div align="center">
   <img src="assets/ollama-tui-logo.svg" width="150" alt="Ollama-TUI ASCII Icon" />
   <br>
