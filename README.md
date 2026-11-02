@@ -26,7 +26,7 @@
 
 A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
 
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on FreeBSD, it aims to be fast, lightweight, and keyboard-driven. and to be as crossplatform as possible, running on Windows, MacOS, Linux, and BSD systems
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD.
 
 > Note: DeepSeek was partially used in the process of making this project to assist with development and iteration.
 
@@ -42,7 +42,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
 * **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
-* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.conf`. You can add, remove, or edit the attachment list before sending a message.
+* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.sh`.
 * **Capability Detection:** Automatically detects if your model supports Vision, Thinking, or Tools.
 * **Thinking Viewer:** Press `Alt+T` to see the model's internal chain-of-thought (gray italic text) before the final response.
 * **Toggles:** Turn Thinking (`Ctrl+T`) or Tool use (`Ctrl+Y`) on and off on the fly.
@@ -122,18 +122,23 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
 | Ctrl + C | Any | Exit app (prompts to kill Ollama server) |
-| `Alt + T` | Chat | Toggle the display of the model's thinking process |
-| `Ctrl + T` | Any | Toggle Thinking mode (if supported by model) |
-| `Ctrl + Y` | Any | Toggle Tooling mode (if supported by model) |
+| Alt + T | Chat | Toggle the display of the model's thinking process |
+| Ctrl + T | Any | Toggle Thinking mode (if supported by model) |
+| Ctrl + Y | Any | Toggle Tooling mode (if supported by model) |
 
 ## 🖥️ Platform Support
 
-* FreeBSD / OpenBSD / NetBSD: Fully supported natively.
-* Linux (Arch, Debian, Fedora, etc.): Fully supported natively.
-* macOS (Intel & Apple Silicon): Fully supported natively.
-* Windows: Fully supported natively via cross-compilation (requires the `.exe` build).
+- Tested natively and working:
+  - Linux
+  - FreeBSD
+- Expected to work (untested):
+  - macOS / Darwin
+  - Windows
+- Experimental / untested:
+  - NetBSD
+  - OpenBSD
 
-> Note: The Windows installer script is separate because Windows is not POSIX-compliant and handles background processes slightly differently.
+> The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
 ## 🛠️ Built With
 
