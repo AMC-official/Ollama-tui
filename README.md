@@ -5,7 +5,7 @@
 <div align="center">
   <img src="assets/ollama-tui-logo.svg" width="150" alt="Ollama-TUI ASCII Icon" />
   <br>
-  <i>A quick lookup at the statup of the tool.</i>
+  <i>The official logo of Ollama TUI.</i>
 </div>
 
 <br>
