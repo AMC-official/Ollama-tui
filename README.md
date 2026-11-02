@@ -43,6 +43,11 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
 * **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
 * **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.conf`. You can add, remove, or edit the attachment list before sending a message.
+* **Capability Detection:** Automatically detects if your model supports Vision, Thinking, or Tools.
+* **Thinking Viewer:** Press `Alt+T` to see the model's internal chain-of-thought (gray italic text) before the final response.
+* **Toggles:** Turn Thinking (`Ctrl+T`) or Tool use (`Ctrl+Y`) on and off on the fly.
+* **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
+
 
 ## 📦 Prerequisites
 
@@ -117,6 +122,9 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
 | Ctrl + C | Any | Exit app (prompts to kill Ollama server) |
+| `Alt + T` | Chat | Toggle the display of the model's thinking process |
+| `Ctrl + T` | Any | Toggle Thinking mode (if supported by model) |
+| `Ctrl + Y` | Any | Toggle Tooling mode (if supported by model) |
 
 ## 🖥️ Platform Support
 
