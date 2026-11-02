@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/sh 
+# compatibility matters, so regular shell it is
 
 # Exit on error
 set -e
