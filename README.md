@@ -122,9 +122,9 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
 | Ctrl + C | Any | Exit app (prompts to kill Ollama server) |
-| `Alt + T` | Chat | Toggle the display of the model's thinking process |
-| `Ctrl + T` | Any | Toggle Thinking mode (if supported by model) |
-| `Ctrl + Y` | Any | Toggle Tooling mode (if supported by model) |
+| Alt + T | Chat | Toggle the display of the model's thinking process |
+| Ctrl + T | Any | Toggle Thinking mode (if supported by model) |
+| Ctrl + Y | Any | Toggle Tooling mode (if supported by model) |
 
 ## 🖥️ Platform Support
 
