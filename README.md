@@ -99,7 +99,7 @@ For Windows (PowerShell):
 go run main.go
 ```
 
-### Build it by yourself
+### 4. Build it by yourself
 ```bash
 git clone https://github.com/AMC-official/Ollama-tui.git
 cd ~/ollama-tui
