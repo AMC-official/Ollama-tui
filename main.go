@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/glamour/v2"
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -122,6 +123,9 @@ type model struct {
 	useThinking      bool
 	useTools         bool
 	showThinking     bool
+
+	// Glamour renderer
+	renderer *glamour.TermRenderer
 
 	ollamaCmd        *exec.Cmd
 	errText          string
@@ -452,10 +456,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.width = msg.Width
 			m.height = msg.Height
 			m.viewport.Width = msg.Width - 4
-			m.viewport.Height = msg.Height - 10
+			m.viewport.Height = msg.Height - 12
 			m.textarea.SetWidth(msg.Width - 8)
 			m.promptInput.SetWidth(msg.Width - 14)
 			m.fileInput.SetWidth(msg.Width - 14)
+
+			// Recreate Glamour renderer with new width
+			r, _ := glamour.NewTermRenderer(
+				glamour.WithStylePath("dark"),
+							glamour.WithWordWrap(msg.Width-10),
+			)
+			m.renderer = r
+
 			m.updateViewport()
 
 		case clearStatusMsg:
@@ -1017,8 +1029,18 @@ func (m *model) renderMessage(msg ChatMessage, i int, textWidth int) string {
 		finalContent.WriteString("\n\n")
 	}
 
-	wrappedText := lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
-	finalContent.WriteString(wrappedText)
+	var renderedText string
+	if msg.Role == "AI" && m.renderer != nil {
+		out, err := m.renderer.Render(msg.Content)
+		if err == nil {
+			renderedText = strings.TrimSuffix(out, "\n")
+		} else {
+			renderedText = lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
+		}
+	} else {
+		renderedText = lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
+	}
+	finalContent.WriteString(renderedText)
 
 	lines := strings.Split(finalContent.String(), "\n")
 
@@ -1180,7 +1202,8 @@ func (m model) View() string {
 		capStr += fmt.Sprintf(" [🛠️ Tools: %s]", status)
 	}
 
-	header := headerStyle.Render(fmt.Sprintf("Model: %s %s %s", aiLabelStyle.Render(modelName), meter, lipgloss.NewStyle().Foreground(colorGray).Render(capStr)))
+	headerText := fmt.Sprintf("Model: %s %s %s", aiLabelStyle.Render(modelName), meter, lipgloss.NewStyle().Foreground(colorGray).Render(capStr))
+	header := headerStyle.Width(m.width - 2).Render(headerText)
 
 	vpView := m.viewport.View()
 	taView := textareaStyle.Render(m.textarea.View())
@@ -1216,7 +1239,7 @@ func (m model) View() string {
 		}
 		statusText = chatHelp
 	}
-	status := statusStyle.Render(statusText)
+	status := statusStyle.Width(m.width - 2).Render(statusText)
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, vpView, taView, status)
 }
@@ -1255,6 +1278,12 @@ func main() {
 
 	vp := viewport.New(80, 20)
 
+	// Initialize the Glamour renderer with a dark theme and an initial width
+	r, _ := glamour.NewTermRenderer(
+		glamour.WithStylePath("dark"),
+					glamour.WithWordWrap(70),
+	)
+
 	m := model{
 		state:               stateLoading,
 		textarea:            ta,
@@ -1270,7 +1299,8 @@ func main() {
 		swapIndex:           -1,
 		liveBuilder:         &strings.Builder{},
 		liveThinkingBuilder: &strings.Builder{},
-		showThinking:        true, // Default to showing thoughts
+		showThinking:        true,
+		renderer:            r, // Assign the renderer
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
