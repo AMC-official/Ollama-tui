@@ -157,6 +157,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 - Tested natively and working:
   - Linux
   - FreeBSD
+  - Android (via Termux)
 - Expected to work (untested):
   - macOS / Darwin
   - Windows
