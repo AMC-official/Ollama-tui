@@ -47,6 +47,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Thinking Viewer:** Press `Alt+T` to see the model's internal chain-of-thought (gray italic text) before the final response.
 * **Toggles:** Turn Thinking (`Ctrl+T`) or Tool use (`Ctrl+Y`) on and off on the fly.
 * **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
+* **Dynamic Host Support:** Connect to remote Ollama servers using `--host http://IP:11434`, or press `Ctrl+H` in the model selection screen.
 
 
 ## 📦 Prerequisites
@@ -105,6 +106,24 @@ git clone https://github.com/AMC-official/Ollama-tui.git
 cd ~/ollama-tui
 go build -o ollama-tui main.go
 ```
+
+### 5. Connecting to a Remote Server
+
+You can run Ollama-TUI on one machine (like your phone or a laptop) and connect to an Ollama server running on another machine (like your main PC). 
+
+**On the server machine (the one running Ollama):**
+You must expose Ollama to your local network. By default, Ollama only listens to `localhost`. Start it with:
+```bash
+OLLAMA_HOST=0.0.0.0 ollama serve
+```
+On the client machine (the one running Ollama-TUI):
+Find the server's **local IP address** (e.g., 192.168.1.50), then run:
+bash
+```bash
+ollama-tui --host http://192.168.1.50:11434
+```
+
+> (Alternatively, run ollama-tui and press Ctrl+H on the model selection screen to enter the IP address.)
 ---
 
 ## ⌨️ Keybindings
@@ -131,6 +150,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Alt + T | Chat | Toggle the display of the model's thinking process |
 | Ctrl + T | Any | Toggle Thinking mode (if supported by model) |
 | Ctrl + Y | Any | Toggle Tooling mode (if supported by model) |
+| Ctrl + H | Model Selection | Change the Ollama host URL |
 
 ## 🖥️ Platform Support
 
