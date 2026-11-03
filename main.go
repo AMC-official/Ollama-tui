@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/xml"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,6 +41,7 @@ type OllamaGenerateReq struct {
 	System  string                 `json:"system,omitempty"`
 	Images  []string               `json:"images,omitempty"`
 	Stream  bool                   `json:"stream"`
+	Think   *bool                  `json:"think,omitempty"`
 	Options map[string]interface{} `json:"options,omitempty"`
 }
 type OllamaGenerateRes struct {
@@ -71,6 +73,7 @@ type state int
 const (
 	stateLoading state = iota
 	stateSelectModel
+	stateHostInput
 	stateChat
 	stateHistory
 	stateSystemPrompt
@@ -112,9 +115,11 @@ type model struct {
 	textarea         textarea.Model
 	promptInput      textarea.Model
 	fileInput        textarea.Model
+	hostInput        textarea.Model
 	attachments      []Attachment
 	attachCursor     int
 	swapIndex        int
+	host             string
 
 	// Capability flags
 	supportsVision   bool
@@ -195,15 +200,17 @@ type streamChunkMsg struct {
 }
 type streamDoneMsg struct{}
 
-// Init runs when the app starts
+// Init is the missing piece that satisfies the tea.Model interface
 func (m model) Init() tea.Cmd {
+	return fetchModels(m.host)
+}
+
+// fetchModels is a dynamic command to fetch models from a specific host
+func fetchModels(host string) tea.Cmd {
 	return func() tea.Msg {
-		if m.ollamaCmd == nil {
-			return ollamaMissingMsg{}
-		}
-		resp, err := http.Get("http://localhost:11434/api/tags")
+		resp, err := http.Get(host + "/api/tags")
 		if err != nil {
-			return ollamaMissingMsg{}
+			return errMsg{fmt.Errorf("failed to connect to %s: %v", host, err)}
 		}
 		defer resp.Body.Close()
 		var tags OllamaTags
@@ -260,11 +267,13 @@ func startGenerate(ctx context.Context, m model, finalPrompt string, ch chan Oll
 		}
 
 		options := make(map[string]interface{})
-		if m.useThinking {
-			options["think"] = true
-		}
 		if m.useTools {
 			options["tools"] = true
+		}
+
+		var thinkPtr *bool
+		if m.supportsThinking {
+			thinkPtr = &m.useThinking
 		}
 
 		reqBody, _ := json.Marshal(OllamaGenerateReq{
@@ -273,10 +282,11 @@ func startGenerate(ctx context.Context, m model, finalPrompt string, ch chan Oll
 			System:  m.systemPrompt,
 			Images:  imageB64,
 			Stream:  true,
+			Think:   thinkPtr,
 			Options: options,
 		})
 
-		req, err := http.NewRequestWithContext(ctx, "POST", "http://localhost:11434/api/generate", bytes.NewBuffer(reqBody))
+		req, err := http.NewRequestWithContext(ctx, "POST", m.host+"/api/generate", bytes.NewBuffer(reqBody))
 		if err != nil {
 			close(ch)
 			return nil
@@ -460,6 +470,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.textarea.SetWidth(msg.Width - 8)
 			m.promptInput.SetWidth(msg.Width - 14)
 			m.fileInput.SetWidth(msg.Width - 14)
+			m.hostInput.SetWidth(msg.Width - 14)
 
 			// Recreate Glamour renderer with new width
 			r, _ := glamour.NewTermRenderer(
@@ -545,8 +556,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.isThinking = false
 
 		case errMsg:
-			m.err = msg
-			return m, tea.Quit
+			// Instead of crashing, show the error and return to the previous state
+			m.statusMsg = msg.err.Error()
+			m.statusIsError = true
+			m.state = stateSelectModel // Go back to model selection so they can fix the host
+			cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+			return m, tea.Batch(cmds...)
 
 		case tea.KeyMsg:
 			if m.state == stateError {
@@ -560,11 +575,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			if msg.String() == "ctrl+c" {
-				if m.state == stateChat || m.state == stateHistory || m.state == stateSystemPrompt || m.state == stateFileAttach || m.state == stateAttachmentList {
+				if m.state == stateChat || m.state == stateHistory || m.state == stateSystemPrompt || m.state == stateFileAttach || m.state == stateAttachmentList || m.state == stateHostInput {
 					m.state = stateExiting
 					m.textarea.Blur()
 					m.promptInput.Blur()
 					m.fileInput.Blur()
+					m.hostInput.Blur()
 				} else {
 					return m, tea.Quit
 				}
@@ -581,6 +597,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Quit
 				}
 				return m, nil
+			}
+
+			if m.state == stateHostInput {
+				var cmd tea.Cmd
+				m.hostInput, cmd = m.hostInput.Update(msg)
+				cmds = append(cmds, cmd)
+
+				if msg.String() == "esc" {
+					m.state = stateSelectModel
+					m.hostInput.Blur()
+				} else if msg.String() == "enter" {
+					newHost := strings.TrimSpace(m.hostInput.Value())
+					if newHost != "" {
+						m.host = newHost
+					}
+					m.state = stateLoading
+					m.hostInput.Blur()
+					cmds = append(cmds, fetchModels(m.host))
+				}
+				return m, tea.Batch(cmds...)
 			}
 
 			if m.state == stateFileAttach {
@@ -714,6 +750,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						if m.cursor < len(m.models)-1 {
 							m.cursor++
 						}
+					case "ctrl+h":
+						m.state = stateHostInput
+						m.hostInput.SetValue(m.host)
+						m.hostInput.Focus()
+						return m, nil
 					case "enter":
 						m.state = stateChat
 						m.focusMode = "textarea"
@@ -1105,6 +1146,13 @@ func (m model) View() string {
 		return "\n  Do you want to stop the Ollama server? (y/n)\n"
 	}
 
+	if m.state == stateHostInput {
+		box := textareaStyle.Width(m.width - 10).Render(m.hostInput.View())
+		help := lipgloss.NewStyle().Foreground(colorGray).Render("Press Enter to save and connect, Esc to cancel.")
+		content := lipgloss.JoinVertical(lipgloss.Left, aiLabelStyle.Render("Host URL (e.g. http://192.168.1.100:11434)"), "", box, "", help)
+		return lipgloss.NewStyle().Margin(1, 2).Render(content)
+	}
+
 	if m.state == stateFileAttach {
 		title := "Attach File (Ctrl+F)"
 		if m.swapIndex != -1 {
@@ -1157,7 +1205,7 @@ func (m model) View() string {
 	}
 
 	if m.state == stateSelectModel {
-		title := "Select a model (Up/Down, Enter to select, Ctrl+C to quit):\n\n"
+		title := fmt.Sprintf("Select a model (Host: %s)\nPress Ctrl+H to change host.\n\n", m.host)
 		title += m.renderScrollableList(m.models, m.cursor, m.height-8)
 		return lipgloss.NewStyle().Margin(1, 2).Render(title)
 	}
@@ -1245,13 +1293,17 @@ func (m model) View() string {
 }
 
 func main() {
+	hostFlag := flag.String("host", "http://localhost:11434", "Ollama server URL")
+	flag.Parse()
+
 	cfg := loadConfig()
 
-	var ollamaCmd *exec.Cmd
-	if _, err := exec.LookPath("ollama"); err == nil {
-		ollamaCmd = exec.Command("ollama", "serve")
-		ollamaCmd.Start()
-		time.Sleep(1 * time.Second)
+	if *hostFlag == "http://localhost:11434" {
+		if _, err := exec.LookPath("ollama"); err == nil {
+			cmd := exec.Command("ollama", "serve")
+			cmd.Start()
+			time.Sleep(1 * time.Second)
+		}
 	}
 
 	ta := textarea.New()
@@ -1276,9 +1328,15 @@ func main() {
 	fi.SetHeight(1)
 	fi.ShowLineNumbers = false
 
+	hi := textarea.New()
+	hi.Placeholder = "http://localhost:11434"
+	hi.Prompt = "┃ "
+	hi.CharLimit = 500
+	hi.SetHeight(1)
+	hi.ShowLineNumbers = false
+
 	vp := viewport.New(80, 20)
 
-	// Initialize the Glamour renderer with a dark theme and an initial width
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
 					glamour.WithWordWrap(70),
@@ -1289,18 +1347,19 @@ func main() {
 		textarea:            ta,
 		promptInput:         pi,
 		fileInput:           fi,
+		hostInput:           hi,
+		host:                *hostFlag,
 		viewport:            vp,
 		focusMode:           "textarea",
 		selectedMsg:         -1,
 		autoScroll:          true,
 		systemPrompt:        cfg.SystemPrompt,
 		config:              cfg,
-		ollamaCmd:           ollamaCmd,
 		swapIndex:           -1,
 		liveBuilder:         &strings.Builder{},
 		liveThinkingBuilder: &strings.Builder{},
 		showThinking:        true,
-		renderer:            r, // Assign the renderer
+		renderer:            r,
 	}
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
