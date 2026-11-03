@@ -118,7 +118,6 @@ OLLAMA_HOST=0.0.0.0 ollama serve
 ```
 On the client machine (the one running Ollama-TUI):
 Find the server's **local IP address** (e.g., 192.168.1.50), then run:
-bash
 ```bash
 ollama-tui --host http://192.168.1.50:11434
 ```
