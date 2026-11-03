@@ -99,6 +99,12 @@ For Windows (PowerShell):
 go run main.go
 ```
 
+### 4. Build it by yourself
+```bash
+git clone https://github.com/AMC-official/Ollama-tui.git
+cd ~/ollama-tui
+go build -o ollama-tui main.go
+```
 ---
 
 ## ⌨️ Keybindings
