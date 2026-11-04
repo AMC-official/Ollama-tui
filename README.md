@@ -1,35 +1,40 @@
 # Ollama-TUI 🦙💻
 
-![Ollama-TUI ASCII Icon](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-logo.svg) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg))  
+<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg" alt="Ollama-TUI ASCII Icon" width="180" />
+
 *The official logo of Ollama-TUI.*
 
 ## 📸 Screenshots
 
 ### Startup
 
-![Startup Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-startup.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png))  
+<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png" alt="Startup Screen" width="700" />
+
 *Startup screen with model selection and automatic server management.*
 
 ### Chat Mode
 
-![Chat Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-usage-chat-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png))  
+<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png" alt="Chat Mode" width="700" />
+
 *Native markdown rendering, streaming responses, context meter, and attachments.*
 
 ### List Mode
 
-![List Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-list-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png))  
+<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png" alt="List Mode" width="700" />
+
 *Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.*
 
 ### Settings
 
-![Settings Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-inter-settings.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png))  
+<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png" alt="Settings Screen" width="700" />
+
 *Configure the system prompt, temperature, top-P, top-K, and context token limit from one place.*
 
 --------------------------------------------
 
-Ollama-TUI is a fast, keyboard-first terminal client for [Ollama](https://ollama.com/) built entirely in Go. It focuses on responsiveness, native terminal rendering, and a workflow that feels at home on Unix-like systems.
+Ollama-TUI is a fast, keyboard-first terminal client for [Ollama](https://ollama.com/) built entirely in Go. It focuses on responsiveness, native terminal rendering, and a workflow that feels at home in a shell rather than a browser.
 
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD.
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD for maximum speed and reliability.
 
 > Note: DeepSeek was partially used in the process of making this project to assist with development and iteration.
 
@@ -187,7 +192,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 * Glamour - The text formatting stylizer
 * Ollama API - The local AI backend.
 
-> Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases. (whoops! screw that note the older versions are deleted anyway)
+> Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases. (whoops! sorry about that.)
 
 ## 📄 License
 
