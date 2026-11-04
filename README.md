@@ -24,7 +24,7 @@
 
 --------------------------------------------
 
-A blazing-fast, zero-bloat terminal user interface (TUI) for [Ollama](https://ollama.com/), built entirely in Go.
+Ollama-TUI is a fast, keyboard-first terminal client for [Ollama](https://ollama.com/) built entirely in Go. It focuses on responsiveness, native terminal rendering, and a workflow that feels at home on Unix-like systems.
 
 Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD.
 
@@ -36,8 +36,9 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Auto-Server Management:** Automatically boots `ollama serve` in the background when you launch it. Prompts to kill the server when you exit.
 * **Multi-Model Support:** Switch between your installed local models on the fly without losing your chat context.
 * **System Prompts:** Set a persistent system prompt (e.g., *"You are a UNIX graybeard"*) using the built-in editor.
-* **Context Meter:** Keep track of your token usage with a visual context window meter in the header.
+* **Context Meter:** Displays current context usage based on your configured context limit.
 * **Chat History:** Save your chats to `.json` files and load them back up anytime.
+* **Persistent Conversation Context:** Uses Ollama's chat API so the model remembers the full conversation.
 * **Branching:** Go back in time, edit a past message, and branch the conversation like ChatGPT.
 * **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
@@ -47,7 +48,8 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Thinking Viewer:** Press `Alt+T` to see the model's internal chain-of-thought (gray italic text) before the final response.
 * **Toggles:** Turn Thinking (`Ctrl+T`) or Tool use (`Ctrl+Y`) on and off on the fly.
 * **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
-* **Dynamic Host Support:** Connect to remote Ollama servers using `--host http://IP:11434`, or press `Ctrl+H` in the model selection screen.
+* **Remote Ollama Support:** Connect to remote servers from the command line with the `host` argument or directly from the model selection screen with `Ctrl + H`.
+* **Inference Settings:** Configure system prompt, temperature, top P, top K and context tokens from a built-in settings screen (`P` in List Mode).
 
 
 ## 📦 Prerequisites
@@ -104,6 +106,7 @@ go run main.go
 ```bash
 git clone https://github.com/AMC-official/Ollama-tui.git
 cd ~/ollama-tui
+go mod tidy
 go build -o ollama-tui main.go
 ```
 
@@ -141,7 +144,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + C | List | Copy the selected message to clipboard |
 | Shift + N | List | Start a completely new chat |
 | Shift + S | List | Switch to a different Ollama model |
-| Shift + P | List | Open the System Prompt editor |
+| Shift + P | List | Open the Settings screen (System Prompt, Temperature, Top-P, Top-K, Context) |
 | Shift + J | List | Save current chat to `.json` |
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
@@ -156,23 +159,32 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 - Tested natively and working:
   - Linux
   - FreeBSD
-  - Android (via Termux)
+  - Android (tested via Termux)
 - Expected to work (untested):
   - macOS / Darwin
   - Windows
 - Experimental / untested:
   - NetBSD
   - OpenBSD
+ 
+  > The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
-> The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
+## Known Limitations
+
+- Tool calling is still experimental.
+- Context meter currently assumes the configured context window.
+- Some inference settings are experimental.
+
+
 
 ## 🛠️ Built With
 
 * Bubble Tea - The TUI framework.
 * Lipgloss - Style definitions for nice terminal layouts.
+* Glamour - the test formatting stylizer
 * Ollama API - The local AI backend.
 
-> Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases.
+> Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases. (whoops! screw that note the older versions are deleted anyway)
 
 ## 📄 License
 
