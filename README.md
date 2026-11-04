@@ -1,34 +1,60 @@
 # Ollama-TUI 🦙💻
 
-<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg" alt="Ollama-TUI ASCII Icon" width="180" />
+<p align="center">
+  <img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg" alt="Ollama-TUI ASCII Icon" width="180" />
+</p>
 
-*The official logo of Ollama-TUI.*
+<p align="center">
+<i>The official logo of Ollama-TUI.</i>
+</p>
 
 ## 📸 Screenshots
 
 ### Startup
 
-<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png" alt="Startup Screen" width="700" />
+<p align="center">
+  <img src="assets/ollama-tui-startup.png" alt="Startup Screen" width="900">
+</p>
 
-*Startup screen with model selection and automatic server management.*
+<p align="center">
+<i>Startup screen with model selection and automatic server management.</i>
+</p>
+
+---
 
 ### Chat Mode
 
-<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png" alt="Chat Mode" width="700" />
+<p align="center">
+  <img src="assets/ollama-tui-usage-chat-mode.png" alt="Chat Mode" width="900">
+</p>
 
-*Native markdown rendering, streaming responses, context meter, and attachments.*
+<p align="center">
+<i>Native markdown rendering, streaming responses, context meter, and attachments.</i>
+</p>
+
+---
 
 ### List Mode
 
-<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png" alt="List Mode" width="700" />
+<p align="center">
+  <img src="assets/ollama-list-mode.png" alt="List Mode" width="900">
+</p>
 
-*Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.*
+<p align="center">
+<i>Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.</i>
+</p>
+
+---
 
 ### Settings
 
-<img src="https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png" alt="Settings Screen" width="700" />
+<p align="center">
+  <img src="assets/ollama-inter-settings.png" alt="Settings Screen" width="900">
+</p>
 
-*Configure the system prompt, temperature, top-P, top-K, and context token limit from one place.*
+<p align="center">
+<i>Configure the system prompt, temperature, top-P, top-K, and context token limit from one place.</i>
+</p>
 
 --------------------------------------------
 
