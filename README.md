@@ -201,7 +201,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
   - NetBSD
   - OpenBSD
  
-  > The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
+> The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
 ## Known Limitations
 
