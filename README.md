@@ -89,7 +89,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 ## 📦 Prerequisites
 
 Before you build or run this, ensure you have:
-1. **Go** (1.20 or newer) installed.
+1. **Go** (1.26+ is recommended) installed.
 2. **Ollama** installed and available in your `$PATH`.
 3. **At least one model pulled** (e.g., `ollama pull gemma3:1b`).
 
