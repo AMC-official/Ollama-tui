@@ -1,26 +1,29 @@
 # Ollama-TUI 🦙💻
 
-<div align="center">
-  <img src="assets/ollama-tui-logo.svg" width="150" alt="Ollama-TUI ASCII Icon" />
-  <br>
-  <i>The official logo of Ollama TUI.</i>
-</div>
+[Ollama-TUI ASCII Icon](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-logo.svg) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg))  
+*The official logo of Ollama-TUI.*
 
-<br>
+## 📸 Screenshots
 
-<div align="center">
-  <img src="assets/ollama-tui-usage-chat-mode.png" width="80%" alt="Chat Mode" />
-  <br>
-  <i>Chat Mode: Native markdown streaming, branch selection, and context meters.</i>
-</div>
+### Startup
 
-<br>
+[Startup Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-startup.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png))  
+*Startup screen with model selection and automatic server management.*
 
-<div align="center">
-  <img src="assets/ollama-list-mode.png" width="80%" alt="List Mode" />
-  <br>
-  <i>List Mode: Vim-style navigation, copy to clipboard, and branching history.</i>
-</div>
+### Chat Mode
+
+[Chat Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-usage-chat-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png))  
+*Native markdown rendering, streaming responses, context meter, and attachments.*
+
+### List Mode
+
+[List Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-list-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png))  
+*Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.*
+
+### Settings
+
+[Settings Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-inter-settings.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png))  
+*Configure the system prompt, temperature, top-P, top-K, and context token limit from one place.*
 
 --------------------------------------------
 
