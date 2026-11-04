@@ -181,7 +181,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 
 * Bubble Tea - The TUI framework.
 * Lipgloss - Style definitions for nice terminal layouts.
-* Glamour - the test formatting stylizer
+* Glamour - The text formatting stylizer
 * Ollama API - The local AI backend.
 
 > Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases. (whoops! screw that note the older versions are deleted anyway)
