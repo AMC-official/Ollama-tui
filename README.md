@@ -1,28 +1,28 @@
 # Ollama-TUI 🦙💻
 
-[Ollama-TUI ASCII Icon](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-logo.svg) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg))  
+![Ollama-TUI ASCII Icon](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-logo.svg) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-logo.svg))  
 *The official logo of Ollama-TUI.*
 
 ## 📸 Screenshots
 
 ### Startup
 
-[Startup Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-startup.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png))  
+![Startup Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-startup.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-startup.png))  
 *Startup screen with model selection and automatic server management.*
 
 ### Chat Mode
 
-[Chat Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-usage-chat-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png))  
+![Chat Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-tui-usage-chat-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-tui-usage-chat-mode.png))  
 *Native markdown rendering, streaming responses, context meter, and attachments.*
 
 ### List Mode
 
-[List Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-list-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png))  
+![List Mode](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-list-mode.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-list-mode.png))  
 *Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.*
 
 ### Settings
 
-[Settings Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-inter-settings.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png))  
+![Settings Screen](https://github.com/AMC-official/Ollama-tui/blob/main/assets/ollama-inter-settings.png) ([image](https://github.com/AMC-official/Ollama-tui/raw/main/assets/ollama-inter-settings.png))  
 *Configure the system prompt, temperature, top-P, top-K, and context token limit from one place.*
 
 --------------------------------------------
