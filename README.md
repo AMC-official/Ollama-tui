@@ -84,6 +84,9 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 * **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
 * **Remote Ollama Support:** Connect to remote servers from the command line with the `host` argument or directly from the model selection screen with `Ctrl + H`.
 * **Inference Settings:** Configure system prompt, temperature, top P, top K and context tokens from a built-in settings screen (`P` in List Mode).
+* **Built-in Model Manager:** Browse installed models, pull new models directly from the Ollama library (`Ctrl+P`), view download sizes, and track download progress with speed and ETA.
+* **Model Management:** Delete installed models with confirmation (`Del`) or instantly (`Shift+D`).
+* **Generation Timer:** Displays how long each response took to generate and shows a live waiting timer while the model is loading.
 
 
 ## 📦 Prerequisites
@@ -91,7 +94,7 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 Before you build or run this, ensure you have:
 1. **Go** (1.26+ is recommended) installed.
 2. **Ollama** installed and available in your `$PATH`.
-3. **At least one model pulled** (e.g., `ollama pull gemma3:1b`).
+33. **No model is required beforehand.** If none are installed, Ollama-TUI opens the built-in Model Manager so you can download one.
 
 ### 🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
 
@@ -160,6 +163,7 @@ ollama-tui --host http://192.168.1.50:11434
 ```
 
 > (Alternatively, run ollama-tui and press Ctrl+H on the model selection screen to enter the IP address.)
+> If no local models are found on first launch, Ollama-TUI automatically opens the Model Manager so you can download one without leaving the application.
 ---
 
 ## ⌨️ Keybindings
@@ -187,6 +191,9 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Ctrl + T | Any | Toggle Thinking mode (if supported by model) |
 | Ctrl + Y | Any | Toggle Tooling mode (if supported by model) |
 | Ctrl + H | Model Selection | Change the Ollama host URL |
+Ctrl + P |	Model Selection	| Pull a model from the Ollama library
+Del	| Model Selection	| Delete selected model (confirmation)
+Shift + D |	Model Selection	| Delete selected model immediately
 
 ## 🖥️ Platform Support
 
@@ -205,7 +212,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 
 ## Known Limitations
 
-- Tool calling is still experimental.
+- Tool calling support is still evolving and may vary depending on the selected model.
 - Context meter currently assumes the configured context window.
 - Some inference settings are experimental.
 
