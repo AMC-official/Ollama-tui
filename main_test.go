@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -400,5 +402,214 @@ func TestHeaderLines(t *testing.T) {
 				t.Errorf("headerLines() = %d, want %d", got, tt.want)
 			}
 		})
+	}
+}
+
+// --- tools ---
+
+func TestEvalExpr(t *testing.T) {
+	tests := []struct {
+		in   string
+		want float64
+	}{
+		{"1+2*3", 7},
+		{"(1+2)*3", 9},
+		{"2^3^2", 512}, // right-associative: 2^(3^2)
+		{"-2^2", -4},   // the power binds tighter than the minus
+		{"2^-1", 0.5},
+		{"10/4", 2.5},
+		{"7%3", 1},
+		{"  4 * ( 2 + 3 ) ", 20},
+		{"sqrt(16)+abs(-2)", 6},
+		{"round(2.5)+floor(1.9)+ceil(0.1)", 5},
+		{"2*pi", 2 * math.Pi},
+		{"e", math.E},
+	}
+	for _, tt := range tests {
+		got, err := evalExpr(tt.in)
+		if err != nil {
+			t.Errorf("evalExpr(%q) failed: %v", tt.in, err)
+			continue
+		}
+		if math.Abs(got-tt.want) > 1e-9 {
+			t.Errorf("evalExpr(%q) = %v, want %v", tt.in, got, tt.want)
+		}
+	}
+}
+
+func TestEvalExprErrors(t *testing.T) {
+	for _, in := range []string{"", "2+", "(1", "1/0", "7%0", "abc", "sqrt(-1)", "2 3", "1..2", "foo(1)"} {
+		if _, err := evalExpr(in); err == nil {
+			t.Errorf("evalExpr(%q) should fail", in)
+		}
+	}
+}
+
+func TestRunTool(t *testing.T) {
+	if got := runTool("calculate", map[string]interface{}{"expression": "6*7"}); got != "42" {
+		t.Errorf("got %q, want 42", got)
+	}
+	if got := runTool("calculate", map[string]interface{}{"expression": "0.1+0.2"}); got != "0.3" {
+		t.Errorf("floating point noise should be rounded away, got %q", got)
+	}
+	if got := runTool("calculate", map[string]interface{}{"expression": "1/0"}); !strings.HasPrefix(got, "error:") {
+		t.Errorf("errors should come back as text starting with error:, got %q", got)
+	}
+	if got := runTool("no_such_tool", nil); !strings.HasPrefix(got, "error:") {
+		t.Errorf("unknown tools should give an error, got %q", got)
+	}
+}
+
+func TestToolCurrentTime(t *testing.T) {
+	got, err := toolCurrentTime(map[string]interface{}{"timezone": "UTC"})
+	if err != nil || !strings.Contains(got, "UTC") {
+		t.Errorf("got %q, %v", got, err)
+	}
+	if _, err := toolCurrentTime(map[string]interface{}{"timezone": "Not/AZone"}); err == nil {
+		t.Error("an unknown time zone should be an error")
+	}
+	if got, err := toolCurrentTime(nil); err != nil || got == "" {
+		t.Errorf("no arguments should give the local time, got %q, %v", got, err)
+	}
+}
+
+func TestToolDefs(t *testing.T) {
+	defs := toolDefs()
+	if len(defs) != len(toolSpecs) {
+		t.Fatalf("got %d definitions for %d tools", len(defs), len(toolSpecs))
+	}
+	if _, err := json.Marshal(defs); err != nil {
+		t.Fatalf("definitions must be valid JSON: %v", err)
+	}
+	names := map[string]bool{}
+	for _, d := range defs {
+		if d.Type != "function" || d.Function.Description == "" {
+			t.Errorf("incomplete definition: %+v", d)
+		}
+		names[d.Function.Name] = true
+	}
+	for _, want := range []string{"get_current_time", "calculate", "list_files", "read_file"} {
+		if !names[want] {
+			t.Errorf("tool %q is missing", want)
+		}
+	}
+}
+
+func TestBuildChatMessagesWithTools(t *testing.T) {
+	call := ToolCall{Function: ToolCallFunction{Name: "get_current_time", Arguments: map[string]interface{}{"timezone": "UTC"}}}
+	history := []ChatMessage{
+		{Role: "You", Content: "what time is it?"},
+		{Role: "AI", ToolCalls: []ToolCall{call}}, // no text, only a tool request: must still be sent
+		{Role: "Tool", ToolName: "get_current_time", Content: "Monday, 12:00"},
+	}
+	want := []OllamaChatMsg{
+		{Role: "user", Content: "what time is it?"},
+		{Role: "assistant", ToolCalls: []ToolCall{call}},
+		{Role: "tool", ToolName: "get_current_time", Content: "Monday, 12:00"},
+	}
+	if got := buildChatMessages(history, "", nil); !reflect.DeepEqual(got, want) {
+		t.Errorf("got  %+v\nwant %+v", got, want)
+	}
+}
+
+func TestIsNoteMsg(t *testing.T) {
+	notes := []ChatMessage{
+		{Role: "System", Content: "Loaded model"},
+		{Role: "Tool", ToolName: "calculate", Content: "4"},
+		{Role: "AI", ToolCalls: []ToolCall{{}}},
+	}
+	for _, m := range notes {
+		if !isNoteMsg(m) {
+			t.Errorf("%+v should be a note", m)
+		}
+	}
+	chat := []ChatMessage{
+		{Role: "You", Content: ""},
+		{Role: "AI", Content: "hello", ToolCalls: []ToolCall{{}}},
+		{Role: "AI"},
+	}
+	for _, m := range chat {
+		if isNoteMsg(m) {
+			t.Errorf("%+v should be a normal message", m)
+		}
+	}
+}
+
+func TestShortenAndDescribeCalls(t *testing.T) {
+	if got := shorten("  hello \n  world  ", 100); got != "hello world" {
+		t.Errorf("got %q", got)
+	}
+	if got := shorten("abcdef", 3); got != "abc…" {
+		t.Errorf("got %q", got)
+	}
+
+	noArgs := []ToolCall{{Function: ToolCallFunction{Name: "get_current_time"}}}
+	if got := describeCalls(noArgs); got != "get_current_time()" {
+		t.Errorf("got %q", got)
+	}
+	withArgs := []ToolCall{{Function: ToolCallFunction{Name: "get_current_time", Arguments: map[string]interface{}{"timezone": "UTC"}}}}
+	if got := describeCalls(withArgs); got != `get_current_time({"timezone":"UTC"})` {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestSafePathAndFileTools(t *testing.T) {
+	root := t.TempDir()
+	outside := t.TempDir()
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(root); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(old)
+
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(root, "a.txt"), "hi")
+	write(filepath.Join(root, ".secret"), "x")
+	write(filepath.Join(root, "bin.dat"), "\x00\x01\x02")
+	write(filepath.Join(outside, "o.txt"), "outside")
+	if err := os.Mkdir(filepath.Join(root, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	good := []string{"a.txt", "./a.txt", "sub", "."}
+	bad := []string{filepath.Join(outside, "o.txt"), "../nothing", ".secret", "missing.txt"}
+	if err := os.Symlink(outside, filepath.Join(root, "link")); err == nil {
+		bad = append(bad, "link/o.txt") // a symlink must not be a way out
+	}
+	for _, p := range good {
+		if _, err := safePath(p); err != nil {
+			t.Errorf("safePath(%q) should work: %v", p, err)
+		}
+	}
+	for _, p := range bad {
+		if _, err := safePath(p); err == nil {
+			t.Errorf("safePath(%q) should be refused", p)
+		}
+	}
+
+	if got, err := toolReadFile(map[string]interface{}{"path": "a.txt"}); err != nil || got != "hi" {
+		t.Errorf("read_file a.txt = %q, %v", got, err)
+	}
+	if _, err := toolReadFile(map[string]interface{}{"path": "sub"}); err == nil {
+		t.Error("read_file on a folder should fail")
+	}
+	if _, err := toolReadFile(map[string]interface{}{"path": "bin.dat"}); err == nil {
+		t.Error("read_file on a binary file should fail")
+	}
+
+	out, err := toolListFiles(map[string]interface{}{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "a.txt") || !strings.Contains(out, "sub/") || strings.Contains(out, ".secret") {
+		t.Errorf("list_files should show files and folders but not hidden ones, got %q", out)
 	}
 }
