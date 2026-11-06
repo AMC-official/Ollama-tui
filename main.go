@@ -32,8 +32,8 @@ import (
 // --- Constants & shared helpers ---
 const (
 	defaultHost         = "http://localhost:11434"
-		contextWindowTokens = 4096 // Ollama's default num_ctx; only used for the context meter
-		maxAttachChars      = 20000
+	contextWindowTokens = 4096 // Ollama's default num_ctx; only used for the context meter
+	maxAttachChars      = 20000
 )
 
 // apiClient is for the short, non-streaming calls (tags / show) so a dead host
@@ -142,6 +142,7 @@ const (
 	pullConfirm                      // found: waiting for y/n
 	pullDownloading                  // downloading, showing the progress bar
 )
+
 // --- UI Styles ---
 var (
 	colorPurple = lipgloss.Color("135")
@@ -206,8 +207,8 @@ type model struct {
 	gotOutput        bool      // true once the model has sent any text
 	autoScroll       bool
 	isSwitchingModel bool
-	deleteTarget     string // model waiting for a y/n delete confirmation
-	selectAfterFetch string // highlight this model after the next model-list refresh
+	deleteTarget     string            // model waiting for a y/n delete confirmation
+	selectAfterFetch string            // highlight this model after the next model-list refresh
 	pullInputs       [2]textarea.Model // model name, parameters/tag
 	pullFocus        int
 	pullStep         pullPhase
@@ -297,9 +298,9 @@ func stopOllama(cmd *exec.Cmd) {
 		close(done)
 	}()
 	select {
-		case <-done:
-		case <-time.After(5 * time.Second):
-			cmd.Process.Kill()
+	case <-done:
+	case <-time.After(5 * time.Second):
+		cmd.Process.Kill()
 	}
 }
 func ollamaReachable(host string) bool {
@@ -344,6 +345,7 @@ type streamDoneMsg struct{ ch chan OllamaGenerateRes }
 
 // tickMsg arrives once a second while a reply is being generated.
 type tickMsg struct{ ch chan OllamaGenerateRes }
+
 // pullEvent is one progress update from a model download.
 type pullEvent struct {
 	Status    string
@@ -419,12 +421,12 @@ func fetchCapabilities(host, modelName string) tea.Cmd {
 					caps := modelCapabilitiesMsg{maxCtx: maxCtx}
 					for _, c := range show.Capabilities {
 						switch c {
-							case "vision":
-								caps.vision = true
-							case "thinking":
-								caps.thinking = true
-							case "tools":
-								caps.tools = true
+						case "vision":
+							caps.vision = true
+						case "thinking":
+							caps.thinking = true
+						case "tools":
+							caps.tools = true
 						}
 					}
 					return caps
@@ -478,18 +480,18 @@ func buildChatMessages(history []ChatMessage, systemPrompt string, images []stri
 	}
 	for _, h := range history {
 		switch h.Role {
-			case "You":
-				content := h.Content
-				if h.Context != "" {
-					content = h.Context + "User Prompt: " + h.Content
-				}
-				out = append(out, OllamaChatMsg{Role: "user", Content: content})
-			case "AI":
-				content := strings.TrimSuffix(h.Content, " [Stopped by user]")
-				if strings.TrimSpace(content) == "" {
-					continue
-				}
-				out = append(out, OllamaChatMsg{Role: "assistant", Content: content})
+		case "You":
+			content := h.Content
+			if h.Context != "" {
+				content = h.Context + "User Prompt: " + h.Content
+			}
+			out = append(out, OllamaChatMsg{Role: "user", Content: content})
+		case "AI":
+			content := strings.TrimSuffix(h.Content, " [Stopped by user]")
+			if strings.TrimSpace(content) == "" {
+				continue
+			}
+			out = append(out, OllamaChatMsg{Role: "assistant", Content: content})
 		}
 	}
 	if len(images) > 0 {
@@ -672,37 +674,37 @@ func processFile(path string) tea.Msg {
 	base64Str := ""
 
 	switch {
-		case textExts[ext]:
-			content, err = readTextFile(path)
-		case ext == ".pdf":
-			content, err = readPDF(path)
-		case ext == ".docx":
-			var xmlStr string
-			xmlStr, err = extractXMLFromZip(path, "word/document.xml")
-			if err == nil {
-				content = stripXML(xmlStr)
-			}
-		case ext == ".odt":
-			var xmlStr string
-			xmlStr, err = extractXMLFromZip(path, "content.xml")
-			if err == nil {
-				content = stripXML(xmlStr)
-			}
-		case ext == ".abw":
-			var xmlStr string
-			xmlStr, err = readTextFile(path)
-			if err == nil {
-				content = stripXML(xmlStr)
-			}
-		case ext == ".png", ext == ".jpg", ext == ".jpeg", ext == ".webp":
-			isImage = true
-			data, errRead := os.ReadFile(path)
-			if errRead == nil {
-				base64Str = base64.StdEncoding.EncodeToString(data)
-			}
-			err = errRead
-		default:
-			return fileErrorMsg{err: fmt.Sprintf("unsupported file type: %s", ext)}
+	case textExts[ext]:
+		content, err = readTextFile(path)
+	case ext == ".pdf":
+		content, err = readPDF(path)
+	case ext == ".docx":
+		var xmlStr string
+		xmlStr, err = extractXMLFromZip(path, "word/document.xml")
+		if err == nil {
+			content = stripXML(xmlStr)
+		}
+	case ext == ".odt":
+		var xmlStr string
+		xmlStr, err = extractXMLFromZip(path, "content.xml")
+		if err == nil {
+			content = stripXML(xmlStr)
+		}
+	case ext == ".abw":
+		var xmlStr string
+		xmlStr, err = readTextFile(path)
+		if err == nil {
+			content = stripXML(xmlStr)
+		}
+	case ext == ".png", ext == ".jpg", ext == ".jpeg", ext == ".webp":
+		isImage = true
+		data, errRead := os.ReadFile(path)
+		if errRead == nil {
+			base64Str = base64.StdEncoding.EncodeToString(data)
+		}
+		err = errRead
+	default:
+		return fileErrorMsg{err: fmt.Sprintf("unsupported file type: %s", ext)}
 	}
 
 	if err != nil {
@@ -755,876 +757,879 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
-		case tea.WindowSizeMsg:
-			m.width = msg.Width
-			m.height = msg.Height
-			m.viewport.Width = msg.Width - 4
-			m.viewport.Height = msg.Height - 12
-			m.textarea.SetWidth(msg.Width - 8)
-			m.promptInput.SetWidth(msg.Width - 14)
-			m.fileInput.SetWidth(msg.Width - 14)
-			m.hostInput.SetWidth(msg.Width - 14)
-			w := msg.Width - 38
-			if w < 10 {
-				w = 10
-			}
-			for i := range m.settingInputs {
-				m.settingInputs[i].SetWidth(w)
-			}
-			pw := msg.Width - 30
-			if pw < 10 {
-				pw = 10
-			}
-			for i := range m.pullInputs {
-				m.pullInputs[i].SetWidth(pw)
-			}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.viewport.Width = msg.Width - 4
+		m.viewport.Height = msg.Height - (m.headerLines() + 10)
+		if m.viewport.Height < 3 {
+			m.viewport.Height = 3
+		}
+		m.textarea.SetWidth(msg.Width - 8)
+		m.promptInput.SetWidth(msg.Width - 14)
+		m.fileInput.SetWidth(msg.Width - 14)
+		m.hostInput.SetWidth(msg.Width - 14)
+		w := msg.Width - 38
+		if w < 10 {
+			w = 10
+		}
+		for i := range m.settingInputs {
+			m.settingInputs[i].SetWidth(w)
+		}
+		pw := msg.Width - 30
+		if pw < 10 {
+			pw = 10
+		}
+		for i := range m.pullInputs {
+			m.pullInputs[i].SetWidth(pw)
+		}
 
-			// Recreate Glamour renderer with new width
-			r, _ := glamour.NewTermRenderer(
-				glamour.WithStylePath("dark"),
-							glamour.WithWordWrap(msg.Width-10),
-			)
-			m.renderer = r
+		// Recreate Glamour renderer with new width
+		r, _ := glamour.NewTermRenderer(
+			glamour.WithStylePath("dark"),
+			glamour.WithWordWrap(msg.Width-10),
+		)
+		m.renderer = r
 
-			m.updateViewport()
+		m.updateViewport()
 
-		case clearStatusMsg:
-			m.statusMsg = ""
-			m.statusIsError = false
+	case clearStatusMsg:
+		m.statusMsg = ""
+		m.statusIsError = false
 
-		case ollamaMissingMsg:
-			m.state = stateError
-			m.errText = "you need to install Ollama CLI tools\n\nGet it at: https://ollama.com/"
-			m.keepServer = false
+	case ollamaMissingMsg:
+		m.state = stateError
+		m.errText = "you need to install Ollama CLI tools\n\nGet it at: https://ollama.com/"
+		m.keepServer = false
 
-		case noModelsMsg:
-			// An empty library is fine now: the model screen lets you pull one.
-			m.models = nil
-			m.cursor = 0
-			m.state = stateSelectModel
-			m.statusMsg = "No models installed yet - press Ctrl+P to pull one."
-			m.statusIsError = false
+	case noModelsMsg:
+		// An empty library is fine now: the model screen lets you pull one.
+		m.models = nil
+		m.cursor = 0
+		m.state = stateSelectModel
+		m.statusMsg = "No models installed yet - press Ctrl+P to pull one."
+		m.statusIsError = false
 
-		case modelCapabilitiesMsg:
-			m.supportsVision = msg.vision
-			m.supportsThinking = msg.thinking
-			m.supportsTools = msg.tools
-			m.useThinking = msg.thinking
-			m.useTools = msg.tools
-			m.modelMaxCtx = msg.maxCtx
-			m.updateViewport()
+	case modelCapabilitiesMsg:
+		m.supportsVision = msg.vision
+		m.supportsThinking = msg.thinking
+		m.supportsTools = msg.tools
+		m.useThinking = msg.thinking
+		m.useTools = msg.tools
+		m.modelMaxCtx = msg.maxCtx
+		m.updateViewport()
 
-		case fileAttachedMsg:
-			if m.swapIndex == -1 {
-				m.attachments = append(m.attachments, msg.attachment)
-			} else {
-				m.attachments[m.swapIndex] = msg.attachment
-				m.swapIndex = -1
-			}
-			m.state = stateAttachmentList
-			m.statusMsg = fmt.Sprintf("Attached: %s", msg.attachment.Name)
-			cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
-
-		case fileEditedMsg:
-			if msg.index >= 0 && msg.index < len(m.attachments) {
-				m.attachments[msg.index].Text = msg.text
-				m.statusMsg = "File edited and reloaded."
-				m.statusIsError = false
-			}
-			m.state = stateAttachmentList
-			cmds = append(cmds, clearStatusCmd(5*time.Second))
-
-		case fileErrorMsg:
-			m.state = stateChat
-			m.focusMode = "textarea"
+	case fileAttachedMsg:
+		if m.swapIndex == -1 {
+			m.attachments = append(m.attachments, msg.attachment)
+		} else {
+			m.attachments[m.swapIndex] = msg.attachment
 			m.swapIndex = -1
-			m.textarea.Focus()
-			m.statusMsg = "File error: " + msg.err
-			m.statusIsError = true
-			cmds = append(cmds, clearStatusCmd(5*time.Second))
+		}
+		m.state = stateAttachmentList
+		m.statusMsg = fmt.Sprintf("Attached: %s", msg.attachment.Name)
+		cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
 
-		case modelsFetchedMsg:
-			m.models = msg.models
-			if m.selectAfterFetch != "" {
-				for idx, name := range m.models {
-					if name == m.selectAfterFetch {
-						m.cursor = idx
-					}
+	case fileEditedMsg:
+		if msg.index >= 0 && msg.index < len(m.attachments) {
+			m.attachments[msg.index].Text = msg.text
+			m.statusMsg = "File edited and reloaded."
+			m.statusIsError = false
+		}
+		m.state = stateAttachmentList
+		cmds = append(cmds, clearStatusCmd(5*time.Second))
+
+	case fileErrorMsg:
+		m.state = stateChat
+		m.focusMode = "textarea"
+		m.swapIndex = -1
+		m.textarea.Focus()
+		m.statusMsg = "File error: " + msg.err
+		m.statusIsError = true
+		cmds = append(cmds, clearStatusCmd(5*time.Second))
+
+	case modelsFetchedMsg:
+		m.models = msg.models
+		if m.selectAfterFetch != "" {
+			for idx, name := range m.models {
+				if name == m.selectAfterFetch {
+					m.cursor = idx
 				}
-				m.selectAfterFetch = ""
 			}
-			if m.cursor >= len(m.models) {
-				m.cursor = 0
+			m.selectAfterFetch = ""
+		}
+		if m.cursor >= len(m.models) {
+			m.cursor = 0
+		}
+		m.state = stateSelectModel
+
+	case historyFilesMsg:
+		m.historyFiles = msg.files
+		m.historyCursor = 0
+		m.state = stateHistory
+
+	case streamChunkMsg:
+		// FIXED: ignore chunks from a stream that was stopped or replaced, so they
+		// can't leak into a different message/chat.
+		if m.streamChan == nil || msg.ch != m.streamChan {
+			return m, nil
+		}
+		if msg.Response != "" || msg.Thinking != "" {
+			m.gotOutput = true
+		}
+		if last := len(m.messages) - 1; last >= 0 && m.messages[last].Role == "AI" {
+			if msg.Thinking != "" {
+				m.liveThinkingBuilder.WriteString(msg.Thinking)
+				m.messages[last].Thinking = m.liveThinkingBuilder.String()
 			}
+			if msg.Response != "" {
+				m.liveBuilder.WriteString(msg.Response)
+				m.messages[last].Content = m.liveBuilder.String()
+			}
+			if msg.Error != "" {
+				errText := "⚠️ Error: " + msg.Error
+				if m.messages[last].Content == "" && m.messages[last].Thinking == "" {
+					// Nothing was generated: turn the empty AI bubble into a note.
+					m.messages[last].Role = "System"
+					m.messages[last].Content = errText
+				} else {
+					m.messages = append(m.messages, ChatMessage{Role: "System", Content: errText})
+				}
+				m.statusMsg = msg.Error
+				m.statusIsError = true
+				cmds = append(cmds, clearStatusCmd(5*time.Second))
+			}
+		}
+		m.updateViewport()
+		if m.autoScroll {
+			m.viewport.GotoBottom()
+		}
+		cmds = append(cmds, waitForStream(m.streamChan))
+
+	case pullCheckedMsg:
+		// Ignore answers to a check the user has already left.
+		if m.state != stateModelPull || m.pullStep != pullChecking || msg.ref != m.pullModel {
+			return m, nil
+		}
+		switch {
+		case msg.err != nil:
+			m.pullStep = pullInput
+			m.pullErr = msg.err.Error()
+			m.focusPull()
+		case msg.notFound:
+			m.pullStep = pullInput
+			m.pullErr = fmt.Sprintf("%s was not found in the Ollama library.", msg.ref)
+			m.focusPull()
+		default:
+			m.pullStep = pullConfirm
+			m.pullSize = msg.size
+		}
+
+	case pullProgressMsg:
+		if m.pullChan == nil || msg.ch != m.pullChan {
+			return m, nil
+		}
+		ev := msg.ev
+		if ev.Err != "" {
+			if m.pullCancel != nil {
+				m.pullCancel()
+			}
+			m.pullChan = nil
+			m.pullStep = pullInput
+			m.pullErr = ev.Err
+			m.focusPull()
+			return m, nil
+		}
+		if ev.Status != "" {
+			m.pullStatus = ev.Status
+		}
+		if ev.Status == "success" {
+			m.pullSuccess = true
+		}
+		if ev.Total > 0 {
+			m.pullTotal = ev.Total
+			if ev.Completed > m.pullDone {
+				m.pullDone = ev.Completed
+			}
+		}
+		cmds = append(cmds, waitForPull(m.pullChan))
+
+	case pullDoneMsg:
+		if m.pullChan == nil || msg.ch != m.pullChan {
+			return m, nil
+		}
+		m.pullChan = nil
+		if m.pullCancel != nil {
+			m.pullCancel()
+		}
+		if m.pullSuccess {
+			m.selectAfterFetch = m.pullModel
 			m.state = stateSelectModel
+			m.statusMsg = "Downloaded " + m.pullModel
+			m.statusIsError = false
+			cmds = append(cmds, fetchModels(m.host), clearStatusCmd(5*time.Second))
+		} else {
+			m.pullStep = pullInput
+			m.pullErr = "The download stopped before it finished. Try again, it resumes where it left off."
+			m.focusPull()
+		}
 
-		case historyFilesMsg:
-			m.historyFiles = msg.files
-			m.historyCursor = 0
-			m.state = stateHistory
+	case deleteDoneMsg:
+		if msg.err != nil {
+			m.statusMsg = "Delete failed: " + msg.err.Error()
+			m.statusIsError = true
+		} else {
+			m.statusMsg = "Deleted " + msg.name
+			m.statusIsError = false
+			cmds = append(cmds, fetchModels(m.host))
+		}
+		cmds = append(cmds, clearStatusCmd(5*time.Second))
+	case tickMsg:
+		// Keep ticking only for the stream that is still running. Returning from
+		// Update is enough to make Bubble Tea redraw the status bar.
+		if m.isThinking && m.streamChan != nil && msg.ch == m.streamChan {
+			cmds = append(cmds, tickCmd(m.streamChan))
+		}
 
-		case streamChunkMsg:
-			// FIXED: ignore chunks from a stream that was stopped or replaced, so they
-			// can't leak into a different message/chat.
-			if m.streamChan == nil || msg.ch != m.streamChan {
-				return m, nil
+	case streamDoneMsg:
+		if m.streamChan != nil && msg.ch == m.streamChan {
+			m.isThinking = false
+			m.streamChan = nil
+			if m.cancelStream != nil {
+				m.cancelStream()
 			}
-			if msg.Response != "" || msg.Thinking != "" {
-				m.gotOutput = true
-			}
+			// Print how long the reply took under it.
 			if last := len(m.messages) - 1; last >= 0 && m.messages[last].Role == "AI" {
-				if msg.Thinking != "" {
-					m.liveThinkingBuilder.WriteString(msg.Thinking)
-					m.messages[last].Thinking = m.liveThinkingBuilder.String()
-				}
-				if msg.Response != "" {
-					m.liveBuilder.WriteString(msg.Response)
-					m.messages[last].Content = m.liveBuilder.String()
-				}
-				if msg.Error != "" {
-					errText := "⚠️ Error: " + msg.Error
-					if m.messages[last].Content == "" && m.messages[last].Thinking == "" {
-						// Nothing was generated: turn the empty AI bubble into a note.
-						m.messages[last].Role = "System"
-						m.messages[last].Content = errText
-					} else {
-						m.messages = append(m.messages, ChatMessage{Role: "System", Content: errText})
-					}
-					m.statusMsg = msg.Error
-					m.statusIsError = true
-					cmds = append(cmds, clearStatusCmd(5*time.Second))
-				}
+				m.messages[last].Elapsed = formatDuration(time.Since(m.genStart))
 			}
 			m.updateViewport()
 			if m.autoScroll {
 				m.viewport.GotoBottom()
 			}
-			cmds = append(cmds, waitForStream(m.streamChan))
+		}
 
-		case pullCheckedMsg:
-			// Ignore answers to a check the user has already left.
-			if m.state != stateModelPull || m.pullStep != pullChecking || msg.ref != m.pullModel {
+	case errMsg:
+		// Instead of crashing, show the error and return to the previous state
+		m.statusMsg = msg.err.Error()
+		m.statusIsError = true
+		m.state = stateSelectModel // Go back to model selection so they can fix the host
+		cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+		return m, tea.Batch(cmds...)
+
+	case tea.KeyMsg:
+		if m.state == stateError {
+			if msg.String() == "ctrl+c" || msg.String() == "enter" || msg.String() == "esc" {
+				if !m.keepServer {
+					stopOllama(m.ollamaCmd)
+				}
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if msg.String() == "ctrl+c" {
+			if m.pullCancel != nil {
+				m.pullCancel()
+			}
+			// FIXED: only ask about stopping the server if we actually started one.
+			if m.ollamaCmd != nil && (m.state == stateChat || m.state == stateHistory || m.state == stateSettings || m.state == stateFileAttach || m.state == stateAttachmentList || m.state == stateHostInput) {
+				m.state = stateExiting
+				m.textarea.Blur()
+				m.promptInput.Blur()
+				m.fileInput.Blur()
+				m.hostInput.Blur()
+			} else {
+				return m, tea.Quit
+			}
+		}
+
+		if m.state == stateExiting {
+			if msg.String() == "y" || msg.String() == "Y" {
+				stopOllama(m.ollamaCmd)
+				return m, tea.Quit
+			}
+			if msg.String() == "n" || msg.String() == "N" {
+				return m, tea.Quit
+			}
+			return m, nil
+		}
+
+		if m.state == stateHostInput {
+			switch msg.String() {
+			case "esc":
+				m.state = stateSelectModel
+				m.hostInput.Blur()
+				return m, nil
+			case "enter":
+				if newHost := normalizeHost(m.hostInput.Value()); newHost != "" {
+					m.host = newHost
+				}
+				m.state = stateLoading
+				m.hostInput.Blur()
+				return m, fetchModels(m.host)
+			}
+			var cmd tea.Cmd
+			m.hostInput, cmd = m.hostInput.Update(msg)
+			return m, cmd
+		}
+
+		if m.state == stateFileAttach {
+			switch msg.String() {
+			case "esc":
+				m.state = stateChat
+				m.focusMode = "textarea"
+				m.swapIndex = -1
+				m.fileInput.Reset()
+				m.fileInput.Blur()
+				m.textarea.Focus()
+				m.statusMsg = "Attachment cancelled."
+				m.statusIsError = false
+				return m, clearStatusCmd(5 * time.Second)
+			case "enter":
+				path := strings.TrimSpace(m.fileInput.Value())
+				m.fileInput.Reset()
+				m.fileInput.Blur()
+				if path != "" {
+					return m, func() tea.Msg { return processFile(path) }
+				}
+				m.state = stateChat
+				m.focusMode = "textarea"
+				m.swapIndex = -1
+				m.textarea.Focus()
 				return m, nil
 			}
-			switch {
-				case msg.err != nil:
-					m.pullStep = pullInput
-					m.pullErr = msg.err.Error()
-					m.focusPull()
-				case msg.notFound:
-					m.pullStep = pullInput
-					m.pullErr = fmt.Sprintf("%s was not found in the Ollama library.", msg.ref)
-					m.focusPull()
-				default:
-					m.pullStep = pullConfirm
-					m.pullSize = msg.size
+			var cmd tea.Cmd
+			m.fileInput, cmd = m.fileInput.Update(msg)
+			return m, cmd
+		}
+
+		if m.state == stateAttachmentList {
+			switch msg.String() {
+			case "esc", "ctrl+s":
+				m.state = stateChat
+				m.focusMode = "textarea"
+				m.textarea.Focus()
+			case "up", "k":
+				if m.attachCursor > 0 {
+					m.attachCursor--
+				}
+			case "down", "j":
+				if m.attachCursor < len(m.attachments)-1 {
+					m.attachCursor++
+				}
+			case "X":
+				if len(m.attachments) > 0 {
+					m.attachments = append(m.attachments[:m.attachCursor], m.attachments[m.attachCursor+1:]...)
+					if m.attachCursor >= len(m.attachments) && m.attachCursor > 0 {
+						m.attachCursor--
+					}
+					m.statusMsg = "Attachment deleted."
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+				}
+			case "S":
+				if len(m.attachments) > 0 {
+					m.swapIndex = m.attachCursor
+					m.state = stateFileAttach
+					m.fileInput.Focus()
+				}
+			case "N":
+				if len(m.attachments) > 0 {
+					a := m.attachments[m.attachCursor]
+					if a.IsImage || !textExts[strings.ToLower(filepath.Ext(a.Path))] {
+						m.statusMsg = "Editing is only available for plain-text attachments."
+						m.statusIsError = true
+						cmds = append(cmds, clearStatusCmd(5*time.Second))
+					} else {
+						cmds = append(cmds, editInNano(a.Path, m.attachCursor))
+					}
+				}
 			}
+			return m, tea.Batch(cmds...)
+		}
 
-				case pullProgressMsg:
-					if m.pullChan == nil || msg.ch != m.pullChan {
-						return m, nil
-					}
-					ev := msg.ev
-					if ev.Err != "" {
-						if m.pullCancel != nil {
-							m.pullCancel()
-						}
-						m.pullChan = nil
-						m.pullStep = pullInput
-						m.pullErr = ev.Err
-						m.focusPull()
-						return m, nil
-					}
-					if ev.Status != "" {
-						m.pullStatus = ev.Status
-					}
-					if ev.Status == "success" {
-						m.pullSuccess = true
-					}
-					if ev.Total > 0 {
-						m.pullTotal = ev.Total
-						if ev.Completed > m.pullDone {
-							m.pullDone = ev.Completed
-						}
-					}
-					cmds = append(cmds, waitForPull(m.pullChan))
+		if m.state == stateSettings {
+			switch msg.String() {
+			case "esc":
+				m.closeSettings()
+				m.statusMsg = "Settings cancelled."
+				m.statusIsError = false
+				return m, clearStatusCmd(5 * time.Second)
+			case "ctrl+s":
+				cmd := m.saveSettings()
+				return m, cmd
+			case "tab", "shift+tab":
+				if msg.String() == "tab" {
+					m.settingFocus = (m.settingFocus + 1) % 5
+				} else {
+					m.settingFocus = (m.settingFocus + 4) % 5
+				}
+				m.focusSetting()
+				return m, nil
+			case "enter":
+				// In the system prompt Enter is a newline. On the other fields it moves
+				// to the next one, and on the last field it saves.
+				if m.settingFocus == 4 {
+					cmd := m.saveSettings()
+					return m, cmd
+				}
+				if m.settingFocus != 0 {
+					m.settingFocus++
+					m.focusSetting()
+					return m, nil
+				}
+			}
+			var cmd tea.Cmd
+			if m.settingFocus == 0 {
+				m.promptInput, cmd = m.promptInput.Update(msg)
+			} else {
+				i := m.settingFocus - 1
+				m.settingInputs[i], cmd = m.settingInputs[i].Update(msg)
+			}
+			return m, cmd
+		}
 
-				case pullDoneMsg:
-					if m.pullChan == nil || msg.ch != m.pullChan {
-						return m, nil
+		if m.state == stateHistory {
+			switch msg.String() {
+			case "esc":
+				m.state = stateChat
+				m.focusMode = "list"
+			case "up", "k":
+				if m.historyCursor > 0 {
+					m.historyCursor--
+				}
+			case "down", "j":
+				if m.historyCursor < len(m.historyFiles)-1 {
+					m.historyCursor++
+				}
+			case "enter":
+				if len(m.historyFiles) > 0 {
+					data, err := os.ReadFile(m.historyFiles[m.historyCursor])
+					// FIXED: decode into a fresh slice. Decoding into m.messages reused the
+					// old backing array, so omitted fields (thinking/context) leaked from
+					// the previous chat into the loaded one.
+					var loaded []ChatMessage
+					if err == nil {
+						err = json.Unmarshal(data, &loaded)
 					}
-					m.pullChan = nil
+					m.state = stateChat
+					m.focusMode = "list"
+					if err != nil {
+						m.statusMsg = "Failed to load history: " + err.Error()
+						m.statusIsError = true
+					} else {
+						if len(loaded) == 0 {
+							loaded = []ChatMessage{{Role: "System", Content: "Loaded an empty history."}}
+						}
+						m.messages = loaded
+						m.renderedCache = nil
+						m.selectedMsg = len(m.messages) - 1
+						m.autoScroll = true
+						m.updateViewport()
+						m.viewport.GotoBottom()
+						m.statusMsg = "Loaded history."
+						m.statusIsError = false
+					}
+					cmds = append(cmds, clearStatusCmd(5*time.Second))
+				}
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+		if m.state == stateModelPull {
+			switch m.pullStep {
+			case pullChecking:
+				if msg.String() == "esc" {
+					m.pullStep = pullInput
+					m.focusPull()
+				}
+				return m, nil
+			case pullConfirm:
+				switch msg.String() {
+				case "y", "Y":
+					ctx, cancel := context.WithCancel(context.Background())
+					ch := make(chan pullEvent)
+					m.pullCancel = cancel
+					m.pullChan = ch
+					m.pullStep = pullDownloading
+					m.pullDone = 0
+					m.pullTotal = m.pullSize
+					m.pullStatus = "starting"
+					m.pullSuccess = false
+					m.pullStart = time.Now()
+					return m, tea.Batch(startPull(ctx, m.host, m.pullModel, m.pullSize, ch), waitForPull(ch))
+				case "n", "N", "esc":
+					m.pullStep = pullInput
+					m.focusPull()
+				}
+				return m, nil
+			case pullDownloading:
+				if msg.String() == "esc" {
 					if m.pullCancel != nil {
 						m.pullCancel()
 					}
-					if m.pullSuccess {
-						m.selectAfterFetch = m.pullModel
-						m.state = stateSelectModel
-						m.statusMsg = "Downloaded " + m.pullModel
-						m.statusIsError = false
-						cmds = append(cmds, fetchModels(m.host), clearStatusCmd(5*time.Second))
-					} else {
-						m.pullStep = pullInput
-						m.pullErr = "The download stopped before it finished. Try again, it resumes where it left off."
-						m.focusPull()
-					}
+					m.pullChan = nil // ignore anything still in flight
+					m.pullStep = pullInput
+					m.pullErr = "Download cancelled. What was already downloaded is kept and resumes next time."
+					m.focusPull()
+				}
+				return m, nil
+			}
 
-				case deleteDoneMsg:
-					if msg.err != nil {
-						m.statusMsg = "Delete failed: " + msg.err.Error()
-						m.statusIsError = true
-					} else {
-						m.statusMsg = "Deleted " + msg.name
-						m.statusIsError = false
-						cmds = append(cmds, fetchModels(m.host))
-					}
-					cmds = append(cmds, clearStatusCmd(5*time.Second))
-				case tickMsg:
-					// Keep ticking only for the stream that is still running. Returning from
-					// Update is enough to make Bubble Tea redraw the status bar.
-					if m.isThinking && m.streamChan != nil && msg.ch == m.streamChan {
-						cmds = append(cmds, tickCmd(m.streamChan))
-					}
+			// pullInput: typing the model name and the parameters/tag
+			switch msg.String() {
+			case "esc":
+				for k := range m.pullInputs {
+					m.pullInputs[k].Blur()
+				}
+				m.state = stateSelectModel
+				return m, nil
+			case "tab", "shift+tab", "up", "down":
+				m.pullFocus = 1 - m.pullFocus
+				m.focusPull()
+				return m, nil
+			case "enter":
+				if m.pullFocus == 0 {
+					m.pullFocus = 1
+					m.focusPull()
+					return m, nil
+				}
+				name := strings.ToLower(strings.TrimSpace(m.pullInputs[0].Value()))
+				tag := strings.ToLower(strings.TrimSpace(m.pullInputs[1].Value()))
+				if tag == "" {
+					tag = "latest"
+				}
+				if !validModelPart(name, true) || !validModelPart(tag, false) {
+					m.pullErr = "Names can only use letters, numbers and . _ - (plus / for user models)."
+					return m, nil
+				}
+				m.pullErr = ""
+				m.pullModel = name + ":" + tag
+				m.pullStep = pullChecking
+				return m, checkRegistry(m.pullModel)
+			}
+			var cmd tea.Cmd
+			m.pullInputs[m.pullFocus], cmd = m.pullInputs[m.pullFocus].Update(msg)
+			return m, cmd
+		}
 
-				case streamDoneMsg:
-					if m.streamChan != nil && msg.ch == m.streamChan {
-						m.isThinking = false
-						m.streamChan = nil
-						if m.cancelStream != nil {
-							m.cancelStream()
-						}
-						// Print how long the reply took under it.
-						if last := len(m.messages) - 1; last >= 0 && m.messages[last].Role == "AI" {
-							m.messages[last].Elapsed = formatDuration(time.Since(m.genStart))
+		if m.state == stateSelectModel {
+			// A delete is waiting for y/n.
+			if m.deleteTarget != "" {
+				switch msg.String() {
+				case "y", "Y":
+					name := m.deleteTarget
+					m.deleteTarget = ""
+					return m, deleteModel(m.host, name)
+				case "n", "N", "esc":
+					m.deleteTarget = ""
+				}
+				return m, nil
+			}
+			switch msg.String() {
+			case "up", "k":
+				if m.cursor > 0 {
+					m.cursor--
+				}
+			case "down", "j":
+				if m.cursor < len(m.models)-1 {
+					m.cursor++
+				}
+			case "ctrl+p":
+				m.openPull()
+				return m, nil
+			case "delete", "d":
+				// Ask first.
+				if len(m.models) > 0 {
+					m.deleteTarget = m.models[m.cursor]
+				}
+			case "shift+delete", "D":
+				// No questions asked.
+				if len(m.models) > 0 {
+					return m, deleteModel(m.host, m.models[m.cursor])
+				}
+			case "ctrl+h":
+				m.state = stateHostInput
+				m.hostInput.SetValue(m.host)
+				m.hostInput.Focus()
+				return m, nil
+			case "enter":
+				if len(m.models) == 0 {
+					return m, nil // nothing to select (e.g. the host was unreachable)
+				}
+				m.state = stateChat
+				m.focusMode = "textarea"
+				m.selectedMsg = -1
+				m.autoScroll = true
+
+				if m.isSwitchingModel {
+					m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Switched model to: %s", m.models[m.cursor])})
+					m.isSwitchingModel = false
+				} else if len(m.messages) == 0 {
+					m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Loaded model: %s", m.models[m.cursor])})
+				}
+
+				m.updateViewport()
+				m.textarea.Focus()
+				cmds = append(cmds, fetchCapabilities(m.host, m.models[m.cursor]))
+			}
+			return m, tea.Batch(cmds...)
+		}
+
+		if m.state == stateChat {
+			if msg.String() == "alt+s" && m.isThinking {
+				if m.cancelStream != nil {
+					m.cancelStream()
+				}
+				m.streamChan = nil // anything still in flight is ignored
+				m.isThinking = false
+				if last := len(m.messages) - 1; last >= 0 && m.messages[last].Role == "AI" {
+					m.messages[last].Content += " [Stopped by user]"
+					m.messages[last].Elapsed = formatDuration(time.Since(m.genStart))
+				}
+				m.updateViewport()
+				return m, nil
+			}
+
+			if msg.String() == "tab" || msg.String() == "esc" {
+				if m.focusMode == "textarea" {
+					m.focusMode = "list"
+					m.textarea.Blur()
+					if m.selectedMsg == -1 {
+						m.selectedMsg = len(m.messages) - 1
+					}
+				} else {
+					m.focusMode = "textarea"
+					m.textarea.Focus()
+				}
+				m.updateViewport()
+				return m, nil
+			}
+
+			if msg.String() == "ctrl+t" {
+				if m.supportsThinking {
+					m.useThinking = !m.useThinking
+					m.statusMsg = fmt.Sprintf("Thinking: %v", m.useThinking)
+					cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
+				} else {
+					m.statusMsg = "Sorry, this model does not support Thinking."
+					m.statusIsError = true
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+				}
+				return m, tea.Batch(cmds...)
+			}
+			if msg.String() == "ctrl+y" {
+				if m.supportsTools {
+					m.useTools = !m.useTools
+					m.statusMsg = fmt.Sprintf("Tools: %v", m.useTools)
+					cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
+				} else {
+					m.statusMsg = "Sorry, this model does not support Tools."
+					m.statusIsError = true
+					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+				}
+				return m, tea.Batch(cmds...)
+			}
+
+			if msg.String() == "alt+t" {
+				m.showThinking = !m.showThinking
+				m.statusMsg = fmt.Sprintf("Show Thinking: %v", m.showThinking)
+				cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
+				m.updateViewport()
+				return m, tea.Batch(cmds...)
+			}
+
+			if m.focusMode == "list" {
+				switch msg.String() {
+				case "up", "k":
+					if m.selectedMsg > 0 {
+						m.selectedMsg--
+						m.autoScroll = false
+						m.updateViewport()
+					}
+				case "down", "j":
+					if m.selectedMsg < len(m.messages)-1 {
+						m.selectedMsg++
+						if m.selectedMsg == len(m.messages)-1 {
+							m.autoScroll = true
 						}
 						m.updateViewport()
-						if m.autoScroll {
-							m.viewport.GotoBottom()
+					}
+				case "z", "w":
+					m.viewport.LineUp(1)
+					m.autoScroll = false
+				case "s":
+					m.viewport.LineDown(1)
+				case "C":
+					if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
+						if err := clipboard.WriteAll(m.messages[m.selectedMsg].Content); err != nil {
+							m.statusMsg = "Copy failed: " + err.Error() + " (is xclip installed?)"
+							m.statusIsError = true
+						} else {
+							m.statusMsg = "Copied to clipboard!"
+							m.statusIsError = false
+						}
+						cmds = append(cmds, clearStatusCmd(5*time.Second))
+					}
+				// FIXED: N / S / B / Ctrl+O change the conversation, so they are blocked while
+				// a reply is streaming (late chunks used to land in the wrong chat).
+				case "N":
+					if m.isThinking {
+						cmds = append(cmds, m.setBusyStatus())
+						break
+					}
+					m.messages = []ChatMessage{{Role: "System", Content: fmt.Sprintf("Started new chat with %s", m.models[m.cursor])}}
+					m.selectedMsg = 0
+					m.autoScroll = true
+					m.updateViewport()
+					m.statusMsg = "Started new chat."
+					m.statusIsError = false
+					cmds = append(cmds, clearStatusCmd(5*time.Second))
+				case "S":
+					if m.isThinking {
+						cmds = append(cmds, m.setBusyStatus())
+						break
+					}
+					m.state = stateSelectModel
+					m.isSwitchingModel = true
+				case "P":
+					m.openSettings()
+				case "J":
+					dir := historyDir()
+					filename := fmt.Sprintf("chat_%s.json", time.Now().Format("20060102_150405"))
+					data, _ := json.MarshalIndent(m.messages, "", "  ")
+					err := os.MkdirAll(dir, 0755)
+					if err == nil {
+						err = os.WriteFile(filepath.Join(dir, filename), data, 0644)
+					}
+					if err != nil {
+						m.statusMsg = "Save failed: " + err.Error()
+						m.statusIsError = true
+					} else {
+						m.statusMsg = "Saved: " + filename
+						m.statusIsError = false
+					}
+					cmds = append(cmds, clearStatusCmd(5*time.Second))
+				case "B":
+					if m.isThinking {
+						cmds = append(cmds, m.setBusyStatus())
+						break
+					}
+					if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
+						m.messages = m.messages[:m.selectedMsg+1]
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "--- Branched from here ---"})
+						m.selectedMsg = len(m.messages) - 1
+						m.autoScroll = true
+						m.updateViewport()
+						m.statusMsg = "Branched chat."
+						m.statusIsError = false
+						cmds = append(cmds, clearStatusCmd(5*time.Second))
+					}
+				case "ctrl+o":
+					if m.isThinking {
+						cmds = append(cmds, m.setBusyStatus())
+						break
+					}
+					return m, loadHistoryFiles
+				case "ctrl+l":
+					if len(m.attachments) > 0 {
+						m.state = stateAttachmentList
+						m.attachCursor = 0
+					}
+				}
+				return m, tea.Batch(cmds...)
+			}
+
+			if m.focusMode == "textarea" && !m.isThinking {
+				var cmd tea.Cmd
+
+				if msg.String() == "ctrl+f" {
+					m.state = stateFileAttach
+					m.swapIndex = -1
+					m.textarea.Blur()
+					m.fileInput.Focus()
+					return m, nil
+				}
+				if msg.String() == "ctrl+l" {
+					if len(m.attachments) > 0 {
+						m.state = stateAttachmentList
+						m.attachCursor = 0
+					}
+					return m, nil
+				}
+
+				// FIXED: handle Enter *before* the textarea sees it. Before, the textarea
+				// inserted a newline first, so every prompt was sent with a trailing "\n".
+				if msg.String() == "enter" {
+					userPrompt := strings.TrimSpace(m.textarea.Value())
+					if userPrompt == "" {
+						return m, nil
+					}
+
+					// Text files become context for this message; images go along as images.
+					var attachCtx strings.Builder
+					var imageB64 []string
+					for _, a := range m.attachments {
+						if a.IsImage {
+							imageB64 = append(imageB64, a.Base64)
+						} else {
+							attachCtx.WriteString(fmt.Sprintf("--- %s ---\n%s\n\n", a.Name, a.Text))
+						}
+					}
+					ctxText := ""
+					if attachCtx.Len() > 0 {
+						ctxText = "Context from attached files:\n" + attachCtx.String()
+					}
+
+					m.messages = append(m.messages, ChatMessage{Role: "You", Content: userPrompt, Context: ctxText})
+					for _, a := range m.attachments {
+						if a.IsImage {
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("🖼️ Image: %s", a.Name)})
+						} else {
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("📎 Attached: %s", a.Name)})
 						}
 					}
 
-				case errMsg:
-					// Instead of crashing, show the error and return to the previous state
-					m.statusMsg = msg.err.Error()
-					m.statusIsError = true
-					m.state = stateSelectModel // Go back to model selection so they can fix the host
-					cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
+					// FIXED: the whole conversation is sent, not just the last prompt.
+					// Built here (on the UI goroutine) so the streaming goroutine never
+					// touches m.messages while it is being updated.
+					chatMsgs := buildChatMessages(m.messages, m.systemPrompt, imageB64)
+
+					m.messages = append(m.messages, ChatMessage{Role: "AI", Content: ""})
+
+					var thinkPtr *bool
+					if m.supportsThinking {
+						think := m.useThinking
+						thinkPtr = &think
+					}
+
+					m.selectedMsg = -1
+					m.isThinking = true
+					m.genStart = time.Now()
+					m.gotOutput = false
+					m.autoScroll = true
+
+					ctx, cancel := context.WithCancel(context.Background())
+					m.cancelStream = cancel
+					ch := make(chan OllamaGenerateRes)
+					m.streamChan = ch
+
+					m.textarea.Reset()
+					m.liveBuilder.Reset()
+					m.liveThinkingBuilder.Reset()
+					m.attachments = nil
+					m.updateViewport()
+					m.viewport.GotoBottom()
+
+					cmds = append(cmds, startGenerate(ctx, m.host, m.models[m.cursor], chatMsgs, thinkPtr, buildOptions(m.config, m.numCtxSetting()), ch))
+					cmds = append(cmds, waitForStream(ch))
+					cmds = append(cmds, tickCmd(ch))
 					return m, tea.Batch(cmds...)
+				}
 
-				case tea.KeyMsg:
-					if m.state == stateError {
-						if msg.String() == "ctrl+c" || msg.String() == "enter" || msg.String() == "esc" {
-							if !m.keepServer {
-								stopOllama(m.ollamaCmd)
-							}
-							return m, tea.Quit
-						}
-						return m, nil
-					}
-
-					if msg.String() == "ctrl+c" {
-						if m.pullCancel != nil {
-							m.pullCancel()
-						}
-						// FIXED: only ask about stopping the server if we actually started one.
-						if m.ollamaCmd != nil && (m.state == stateChat || m.state == stateHistory || m.state == stateSettings || m.state == stateFileAttach || m.state == stateAttachmentList || m.state == stateHostInput) {
-							m.state = stateExiting
-							m.textarea.Blur()
-							m.promptInput.Blur()
-							m.fileInput.Blur()
-							m.hostInput.Blur()
-						} else {
-							return m, tea.Quit
-						}
-					}
-
-					if m.state == stateExiting {
-						if msg.String() == "y" || msg.String() == "Y" {
-							stopOllama(m.ollamaCmd)
-							return m, tea.Quit
-						}
-						if msg.String() == "n" || msg.String() == "N" {
-							return m, tea.Quit
-						}
-						return m, nil
-					}
-
-					if m.state == stateHostInput {
-						switch msg.String() {
-							case "esc":
-								m.state = stateSelectModel
-								m.hostInput.Blur()
-								return m, nil
-							case "enter":
-								if newHost := normalizeHost(m.hostInput.Value()); newHost != "" {
-									m.host = newHost
-								}
-								m.state = stateLoading
-								m.hostInput.Blur()
-								return m, fetchModels(m.host)
-						}
-						var cmd tea.Cmd
-						m.hostInput, cmd = m.hostInput.Update(msg)
-						return m, cmd
-					}
-
-					if m.state == stateFileAttach {
-						switch msg.String() {
-							case "esc":
-								m.state = stateChat
-								m.focusMode = "textarea"
-								m.swapIndex = -1
-								m.fileInput.Reset()
-								m.fileInput.Blur()
-								m.textarea.Focus()
-								m.statusMsg = "Attachment cancelled."
-								m.statusIsError = false
-								return m, clearStatusCmd(5 * time.Second)
-							case "enter":
-								path := strings.TrimSpace(m.fileInput.Value())
-								m.fileInput.Reset()
-								m.fileInput.Blur()
-								if path != "" {
-									return m, func() tea.Msg { return processFile(path) }
-								}
-								m.state = stateChat
-								m.focusMode = "textarea"
-								m.swapIndex = -1
-								m.textarea.Focus()
-								return m, nil
-						}
-						var cmd tea.Cmd
-						m.fileInput, cmd = m.fileInput.Update(msg)
-						return m, cmd
-					}
-
-					if m.state == stateAttachmentList {
-						switch msg.String() {
-							case "esc", "ctrl+s":
-								m.state = stateChat
-								m.focusMode = "textarea"
-								m.textarea.Focus()
-							case "up", "k":
-								if m.attachCursor > 0 {
-									m.attachCursor--
-								}
-							case "down", "j":
-								if m.attachCursor < len(m.attachments)-1 {
-									m.attachCursor++
-								}
-							case "X":
-								if len(m.attachments) > 0 {
-									m.attachments = append(m.attachments[:m.attachCursor], m.attachments[m.attachCursor+1:]...)
-									if m.attachCursor >= len(m.attachments) && m.attachCursor > 0 {
-										m.attachCursor--
-									}
-									m.statusMsg = "Attachment deleted."
-									cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
-								}
-							case "S":
-								if len(m.attachments) > 0 {
-									m.swapIndex = m.attachCursor
-									m.state = stateFileAttach
-									m.fileInput.Focus()
-								}
-							case "N":
-								if len(m.attachments) > 0 {
-									a := m.attachments[m.attachCursor]
-									if a.IsImage || !textExts[strings.ToLower(filepath.Ext(a.Path))] {
-										m.statusMsg = "Editing is only available for plain-text attachments."
-										m.statusIsError = true
-										cmds = append(cmds, clearStatusCmd(5*time.Second))
-									} else {
-										cmds = append(cmds, editInNano(a.Path, m.attachCursor))
-									}
-								}
-						}
-						return m, tea.Batch(cmds...)
-					}
-
-					if m.state == stateSettings {
-						switch msg.String() {
-							case "esc":
-								m.closeSettings()
-								m.statusMsg = "Settings cancelled."
-								m.statusIsError = false
-								return m, clearStatusCmd(5 * time.Second)
-							case "ctrl+s":
-								cmd := m.saveSettings()
-								return m, cmd
-							case "tab", "shift+tab":
-								if msg.String() == "tab" {
-									m.settingFocus = (m.settingFocus + 1) % 5
-								} else {
-									m.settingFocus = (m.settingFocus + 4) % 5
-								}
-								m.focusSetting()
-								return m, nil
-							case "enter":
-								// In the system prompt Enter is a newline. On the other fields it moves
-								// to the next one, and on the last field it saves.
-								if m.settingFocus == 4 {
-									cmd := m.saveSettings()
-									return m, cmd
-								}
-								if m.settingFocus != 0 {
-									m.settingFocus++
-									m.focusSetting()
-									return m, nil
-								}
-						}
-						var cmd tea.Cmd
-						if m.settingFocus == 0 {
-							m.promptInput, cmd = m.promptInput.Update(msg)
-						} else {
-							i := m.settingFocus - 1
-							m.settingInputs[i], cmd = m.settingInputs[i].Update(msg)
-						}
-						return m, cmd
-					}
-
-					if m.state == stateHistory {
-						switch msg.String() {
-							case "esc":
-								m.state = stateChat
-								m.focusMode = "list"
-							case "up", "k":
-								if m.historyCursor > 0 {
-									m.historyCursor--
-								}
-							case "down", "j":
-								if m.historyCursor < len(m.historyFiles)-1 {
-									m.historyCursor++
-								}
-							case "enter":
-								if len(m.historyFiles) > 0 {
-									data, err := os.ReadFile(m.historyFiles[m.historyCursor])
-									// FIXED: decode into a fresh slice. Decoding into m.messages reused the
-									// old backing array, so omitted fields (thinking/context) leaked from
-									// the previous chat into the loaded one.
-									var loaded []ChatMessage
-									if err == nil {
-										err = json.Unmarshal(data, &loaded)
-									}
-									m.state = stateChat
-									m.focusMode = "list"
-									if err != nil {
-										m.statusMsg = "Failed to load history: " + err.Error()
-										m.statusIsError = true
-									} else {
-										if len(loaded) == 0 {
-											loaded = []ChatMessage{{Role: "System", Content: "Loaded an empty history."}}
-										}
-										m.messages = loaded
-										m.renderedCache = nil
-										m.selectedMsg = len(m.messages) - 1
-										m.autoScroll = true
-										m.updateViewport()
-										m.viewport.GotoBottom()
-										m.statusMsg = "Loaded history."
-										m.statusIsError = false
-									}
-									cmds = append(cmds, clearStatusCmd(5*time.Second))
-								}
-						}
-						return m, tea.Batch(cmds...)
-					}
-
-					if m.state == stateModelPull {
-						switch m.pullStep {
-							case pullChecking:
-								if msg.String() == "esc" {
-									m.pullStep = pullInput
-									m.focusPull()
-								}
-								return m, nil
-							case pullConfirm:
-								switch msg.String() {
-									case "y", "Y":
-										ctx, cancel := context.WithCancel(context.Background())
-										ch := make(chan pullEvent)
-										m.pullCancel = cancel
-										m.pullChan = ch
-										m.pullStep = pullDownloading
-										m.pullDone = 0
-										m.pullTotal = m.pullSize
-										m.pullStatus = "starting"
-										m.pullSuccess = false
-										m.pullStart = time.Now()
-										return m, tea.Batch(startPull(ctx, m.host, m.pullModel, m.pullSize, ch), waitForPull(ch))
-									case "n", "N", "esc":
-										m.pullStep = pullInput
-										m.focusPull()
-								}
-								return m, nil
-									case pullDownloading:
-										if msg.String() == "esc" {
-											if m.pullCancel != nil {
-												m.pullCancel()
-											}
-											m.pullChan = nil // ignore anything still in flight
-											m.pullStep = pullInput
-											m.pullErr = "Download cancelled. What was already downloaded is kept and resumes next time."
-											m.focusPull()
-										}
-										return m, nil
-						}
-
-						// pullInput: typing the model name and the parameters/tag
-						switch msg.String() {
-							case "esc":
-								for k := range m.pullInputs {
-									m.pullInputs[k].Blur()
-								}
-								m.state = stateSelectModel
-								return m, nil
-							case "tab", "shift+tab", "up", "down":
-								m.pullFocus = 1 - m.pullFocus
-								m.focusPull()
-								return m, nil
-							case "enter":
-								if m.pullFocus == 0 {
-									m.pullFocus = 1
-									m.focusPull()
-									return m, nil
-								}
-								name := strings.ToLower(strings.TrimSpace(m.pullInputs[0].Value()))
-								tag := strings.ToLower(strings.TrimSpace(m.pullInputs[1].Value()))
-								if tag == "" {
-									tag = "latest"
-								}
-								if !validModelPart(name, true) || !validModelPart(tag, false) {
-									m.pullErr = "Names can only use letters, numbers and . _ - (plus / for user models)."
-									return m, nil
-								}
-								m.pullErr = ""
-								m.pullModel = name + ":" + tag
-								m.pullStep = pullChecking
-								return m, checkRegistry(m.pullModel)
-						}
-						var cmd tea.Cmd
-						m.pullInputs[m.pullFocus], cmd = m.pullInputs[m.pullFocus].Update(msg)
-						return m, cmd
-					}
-
-					if m.state == stateSelectModel {
-						// A delete is waiting for y/n.
-						if m.deleteTarget != "" {
-							switch msg.String() {
-								case "y", "Y":
-									name := m.deleteTarget
-									m.deleteTarget = ""
-									return m, deleteModel(m.host, name)
-								case "n", "N", "esc":
-									m.deleteTarget = ""
-							}
-							return m, nil
-						}
-						switch msg.String() {
-							case "up", "k":
-								if m.cursor > 0 {
-									m.cursor--
-								}
-							case "down", "j":
-								if m.cursor < len(m.models)-1 {
-									m.cursor++
-								}
-							case "ctrl+p":
-								m.openPull()
-								return m, nil
-							case "delete", "d":
-								// Ask first.
-								if len(m.models) > 0 {
-									m.deleteTarget = m.models[m.cursor]
-								}
-							case "shift+delete", "D":
-								// No questions asked.
-								if len(m.models) > 0 {
-									return m, deleteModel(m.host, m.models[m.cursor])
-								}
-							case "ctrl+h":
-								m.state = stateHostInput
-								m.hostInput.SetValue(m.host)
-								m.hostInput.Focus()
-								return m, nil
-							case "enter":
-								if len(m.models) == 0 {
-									return m, nil // nothing to select (e.g. the host was unreachable)
-								}
-								m.state = stateChat
-								m.focusMode = "textarea"
-								m.selectedMsg = -1
-								m.autoScroll = true
-
-								if m.isSwitchingModel {
-									m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Switched model to: %s", m.models[m.cursor])})
-									m.isSwitchingModel = false
-								} else if len(m.messages) == 0 {
-									m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("Loaded model: %s", m.models[m.cursor])})
-								}
-
-								m.updateViewport()
-								m.textarea.Focus()
-								cmds = append(cmds, fetchCapabilities(m.host, m.models[m.cursor]))
-						}
-						return m, tea.Batch(cmds...)
-					}
-
-					if m.state == stateChat {
-						if msg.String() == "alt+s" && m.isThinking {
-							if m.cancelStream != nil {
-								m.cancelStream()
-							}
-							m.streamChan = nil // anything still in flight is ignored
-							m.isThinking = false
-							if last := len(m.messages) - 1; last >= 0 && m.messages[last].Role == "AI" {
-								m.messages[last].Content += " [Stopped by user]"
-								m.messages[last].Elapsed = formatDuration(time.Since(m.genStart))
-							}
-							m.updateViewport()
-							return m, nil
-						}
-
-						if msg.String() == "tab" || msg.String() == "esc" {
-							if m.focusMode == "textarea" {
-								m.focusMode = "list"
-								m.textarea.Blur()
-								if m.selectedMsg == -1 {
-									m.selectedMsg = len(m.messages) - 1
-								}
-							} else {
-								m.focusMode = "textarea"
-								m.textarea.Focus()
-							}
-							m.updateViewport()
-							return m, nil
-						}
-
-						if msg.String() == "ctrl+t" {
-							if m.supportsThinking {
-								m.useThinking = !m.useThinking
-								m.statusMsg = fmt.Sprintf("Thinking: %v", m.useThinking)
-								cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
-							} else {
-								m.statusMsg = "Sorry, this model does not support Thinking."
-								m.statusIsError = true
-								cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
-							}
-							return m, tea.Batch(cmds...)
-						}
-						if msg.String() == "ctrl+y" {
-							if m.supportsTools {
-								m.useTools = !m.useTools
-								m.statusMsg = fmt.Sprintf("Tools: %v", m.useTools)
-								cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
-							} else {
-								m.statusMsg = "Sorry, this model does not support Tools."
-								m.statusIsError = true
-								cmds = append(cmds, func() tea.Msg { time.Sleep(5 * time.Second); return clearStatusMsg{} })
-							}
-							return m, tea.Batch(cmds...)
-						}
-
-						if msg.String() == "alt+t" {
-							m.showThinking = !m.showThinking
-							m.statusMsg = fmt.Sprintf("Show Thinking: %v", m.showThinking)
-							cmds = append(cmds, func() tea.Msg { time.Sleep(3 * time.Second); return clearStatusMsg{} })
-							m.updateViewport()
-							return m, tea.Batch(cmds...)
-						}
-
-						if m.focusMode == "list" {
-							switch msg.String() {
-								case "up", "k":
-									if m.selectedMsg > 0 {
-										m.selectedMsg--
-										m.autoScroll = false
-										m.updateViewport()
-									}
-								case "down", "j":
-									if m.selectedMsg < len(m.messages)-1 {
-										m.selectedMsg++
-										if m.selectedMsg == len(m.messages)-1 {
-											m.autoScroll = true
-										}
-										m.updateViewport()
-									}
-								case "z", "w":
-									m.viewport.LineUp(1)
-									m.autoScroll = false
-								case "s":
-									m.viewport.LineDown(1)
-								case "C":
-									if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
-										if err := clipboard.WriteAll(m.messages[m.selectedMsg].Content); err != nil {
-											m.statusMsg = "Copy failed: " + err.Error() + " (is xclip installed?)"
-											m.statusIsError = true
-										} else {
-											m.statusMsg = "Copied to clipboard!"
-											m.statusIsError = false
-										}
-										cmds = append(cmds, clearStatusCmd(5*time.Second))
-									}
-									// FIXED: N / S / B / Ctrl+O change the conversation, so they are blocked while
-									// a reply is streaming (late chunks used to land in the wrong chat).
-								case "N":
-									if m.isThinking {
-										cmds = append(cmds, m.setBusyStatus())
-										break
-									}
-									m.messages = []ChatMessage{{Role: "System", Content: fmt.Sprintf("Started new chat with %s", m.models[m.cursor])}}
-									m.selectedMsg = 0
-									m.autoScroll = true
-									m.updateViewport()
-									m.statusMsg = "Started new chat."
-									m.statusIsError = false
-									cmds = append(cmds, clearStatusCmd(5*time.Second))
-								case "S":
-									if m.isThinking {
-										cmds = append(cmds, m.setBusyStatus())
-										break
-									}
-									m.state = stateSelectModel
-									m.isSwitchingModel = true
-								case "P":
-									m.openSettings()
-								case "J":
-									dir := historyDir()
-									filename := fmt.Sprintf("chat_%s.json", time.Now().Format("20060102_150405"))
-									data, _ := json.MarshalIndent(m.messages, "", "  ")
-									err := os.MkdirAll(dir, 0755)
-									if err == nil {
-										err = os.WriteFile(filepath.Join(dir, filename), data, 0644)
-									}
-									if err != nil {
-										m.statusMsg = "Save failed: " + err.Error()
-										m.statusIsError = true
-									} else {
-										m.statusMsg = "Saved: " + filename
-										m.statusIsError = false
-									}
-									cmds = append(cmds, clearStatusCmd(5*time.Second))
-								case "B":
-									if m.isThinking {
-										cmds = append(cmds, m.setBusyStatus())
-										break
-									}
-									if m.selectedMsg >= 0 && m.selectedMsg < len(m.messages) {
-										m.messages = m.messages[:m.selectedMsg+1]
-										m.messages = append(m.messages, ChatMessage{Role: "System", Content: "--- Branched from here ---"})
-										m.selectedMsg = len(m.messages) - 1
-										m.autoScroll = true
-										m.updateViewport()
-										m.statusMsg = "Branched chat."
-										m.statusIsError = false
-										cmds = append(cmds, clearStatusCmd(5*time.Second))
-									}
-								case "ctrl+o":
-									if m.isThinking {
-										cmds = append(cmds, m.setBusyStatus())
-										break
-									}
-									return m, loadHistoryFiles
-								case "ctrl+l":
-									if len(m.attachments) > 0 {
-										m.state = stateAttachmentList
-										m.attachCursor = 0
-									}
-							}
-							return m, tea.Batch(cmds...)
-						}
-
-						if m.focusMode == "textarea" && !m.isThinking {
-							var cmd tea.Cmd
-
-							if msg.String() == "ctrl+f" {
-								m.state = stateFileAttach
-								m.swapIndex = -1
-								m.textarea.Blur()
-								m.fileInput.Focus()
-								return m, nil
-							}
-							if msg.String() == "ctrl+l" {
-								if len(m.attachments) > 0 {
-									m.state = stateAttachmentList
-									m.attachCursor = 0
-								}
-								return m, nil
-							}
-
-							// FIXED: handle Enter *before* the textarea sees it. Before, the textarea
-							// inserted a newline first, so every prompt was sent with a trailing "\n".
-							if msg.String() == "enter" {
-								userPrompt := strings.TrimSpace(m.textarea.Value())
-								if userPrompt == "" {
-									return m, nil
-								}
-
-								// Text files become context for this message; images go along as images.
-								var attachCtx strings.Builder
-								var imageB64 []string
-								for _, a := range m.attachments {
-									if a.IsImage {
-										imageB64 = append(imageB64, a.Base64)
-									} else {
-										attachCtx.WriteString(fmt.Sprintf("--- %s ---\n%s\n\n", a.Name, a.Text))
-									}
-								}
-								ctxText := ""
-								if attachCtx.Len() > 0 {
-									ctxText = "Context from attached files:\n" + attachCtx.String()
-								}
-
-								m.messages = append(m.messages, ChatMessage{Role: "You", Content: userPrompt, Context: ctxText})
-								for _, a := range m.attachments {
-									if a.IsImage {
-										m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("🖼️ Image: %s", a.Name)})
-									} else {
-										m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("📎 Attached: %s", a.Name)})
-									}
-								}
-
-								// FIXED: the whole conversation is sent, not just the last prompt.
-								// Built here (on the UI goroutine) so the streaming goroutine never
-								// touches m.messages while it is being updated.
-								chatMsgs := buildChatMessages(m.messages, m.systemPrompt, imageB64)
-
-								m.messages = append(m.messages, ChatMessage{Role: "AI", Content: ""})
-
-								var thinkPtr *bool
-								if m.supportsThinking {
-									think := m.useThinking
-									thinkPtr = &think
-								}
-
-								m.selectedMsg = -1
-								m.isThinking = true
-								m.genStart = time.Now()
-								m.gotOutput = false
-								m.autoScroll = true
-
-								ctx, cancel := context.WithCancel(context.Background())
-								m.cancelStream = cancel
-								ch := make(chan OllamaGenerateRes)
-								m.streamChan = ch
-
-								m.textarea.Reset()
-								m.liveBuilder.Reset()
-								m.liveThinkingBuilder.Reset()
-								m.attachments = nil
-								m.updateViewport()
-								m.viewport.GotoBottom()
-
-								cmds = append(cmds, startGenerate(ctx, m.host, m.models[m.cursor], chatMsgs, thinkPtr, buildOptions(m.config, m.numCtxSetting()), ch))
-								cmds = append(cmds, waitForStream(ch))
-								cmds = append(cmds, tickCmd(ch))
-								return m, tea.Batch(cmds...)
-							}
-
-							m.textarea, cmd = m.textarea.Update(msg)
-							cmds = append(cmds, cmd)
-						}
-					}
+				m.textarea, cmd = m.textarea.Update(msg)
+				cmds = append(cmds, cmd)
+			}
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -1829,10 +1834,10 @@ func (m model) generatingStatus() string {
 		return fmt.Sprintf("Generating... %ds (Alt+S to stop)", secs)
 	}
 	switch {
-		case secs >= 60:
-			return fmt.Sprintf("Waiting for the model... %ds • it may not fit in RAM (Alt+S to stop)", secs)
-		case secs >= 20:
-			return fmt.Sprintf("Waiting for the model... %ds • big models load slowly (Alt+S to stop)", secs)
+	case secs >= 60:
+		return fmt.Sprintf("Waiting for the model... %ds • it may not fit in RAM (Alt+S to stop)", secs)
+	case secs >= 20:
+		return fmt.Sprintf("Waiting for the model... %ds • big models load slowly (Alt+S to stop)", secs)
 	}
 	return fmt.Sprintf("Waiting for the model... %ds (Alt+S to stop)", secs)
 }
@@ -1842,12 +1847,12 @@ func (m model) generatingStatus() string {
 // formatDuration prints a duration the way people read it: 3.4s, 42s, 2m 5s.
 func formatDuration(d time.Duration) string {
 	switch {
-		case d < 10*time.Second:
-			return fmt.Sprintf("%.1fs", d.Seconds())
-		case d < time.Minute:
-			return fmt.Sprintf("%ds", int(d.Seconds()))
-		case d < time.Hour:
-			return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)
+	case d < 10*time.Second:
+		return fmt.Sprintf("%.1fs", d.Seconds())
+	case d < time.Minute:
+		return fmt.Sprintf("%ds", int(d.Seconds()))
+	case d < time.Hour:
+		return fmt.Sprintf("%dm %ds", int(d.Minutes()), int(d.Seconds())%60)
 	}
 	return fmt.Sprintf("%dh %dm", int(d.Hours()), int(d.Minutes())%60)
 }
@@ -1865,7 +1870,8 @@ func humanBytes(n int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(n)/float64(div), "kMGTPE"[exp])
 }
 
-func progressBar(frac float64, width int) string {
+// colorBar draws a bar of the given width: filled cells in color, the rest grey.
+func colorBar(frac float64, width int, color lipgloss.Color) string {
 	if frac < 0 {
 		frac = 0
 	}
@@ -1873,8 +1879,12 @@ func progressBar(frac float64, width int) string {
 		frac = 1
 	}
 	filled := int(frac * float64(width))
-	return lipgloss.NewStyle().Foreground(colorGreen).Render(strings.Repeat("█", filled)) +
-	lipgloss.NewStyle().Foreground(colorGray).Render(strings.Repeat("░", width-filled))
+	return lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", filled)) +
+		lipgloss.NewStyle().Foreground(colorGray).Render(strings.Repeat("░", width-filled))
+}
+
+func progressBar(frac float64, width int) string {
+	return colorBar(frac, width, colorGreen)
 }
 
 // --- Model manager (pull / delete) ---
@@ -1899,16 +1909,16 @@ func validModelPart(s string, allowSlash bool) bool {
 
 func friendlyPullStatus(s string) string {
 	switch {
-		case strings.HasPrefix(s, "pulling manifest"):
-			return "Fetching the model manifest..."
-		case strings.HasPrefix(s, "pulling"):
-			return "Downloading..."
-		case strings.HasPrefix(s, "verifying"):
-			return "Verifying the download..."
-		case strings.HasPrefix(s, "writing"):
-			return "Writing the manifest..."
-		case s == "success":
-			return "Done!"
+	case strings.HasPrefix(s, "pulling manifest"):
+		return "Fetching the model manifest..."
+	case strings.HasPrefix(s, "pulling"):
+		return "Downloading..."
+	case strings.HasPrefix(s, "verifying"):
+		return "Verifying the download..."
+	case strings.HasPrefix(s, "writing"):
+		return "Writing the manifest..."
+	case s == "success":
+		return "Done!"
 	}
 	return s
 }
@@ -1937,59 +1947,59 @@ func (m model) pullScreen() string {
 	rows := []string{aiLabelStyle.Render("Pull a model"), ""}
 
 	switch m.pullStep {
-		case pullInput:
-			label := func(i int, name string) string {
-				name = fmt.Sprintf("%-18s", name)
-				if m.pullFocus == i {
-					return aiLabelStyle.Render(name)
-				}
-				return gray.Render(name)
+	case pullInput:
+		label := func(i int, name string) string {
+			name = fmt.Sprintf("%-18s", name)
+			if m.pullFocus == i {
+				return aiLabelStyle.Render(name)
 			}
-			rows = append(rows,
-				      lipgloss.JoinHorizontal(lipgloss.Top, label(0, "Model name"), m.pullInputs[0].View()),
-				      lipgloss.JoinHorizontal(lipgloss.Top, label(1, "Parameters / tag"), m.pullInputs[1].View()),
-				      "")
-			if m.pullErr != "" {
-				rows = append(rows, lipgloss.NewStyle().Foreground(colorRed).Render("✗ "+m.pullErr), "")
+			return gray.Render(name)
+		}
+		rows = append(rows,
+			lipgloss.JoinHorizontal(lipgloss.Top, label(0, "Model name"), m.pullInputs[0].View()),
+			lipgloss.JoinHorizontal(lipgloss.Top, label(1, "Parameters / tag"), m.pullInputs[1].View()),
+			"")
+		if m.pullErr != "" {
+			rows = append(rows, lipgloss.NewStyle().Foreground(colorRed).Render("✗ "+m.pullErr), "")
+		}
+		rows = append(rows, gray.Render("Example: gemma3 + 4b gives gemma3:4b. Leave the second field empty for the default (latest).\nTab: switch field • Enter: check the library • Esc: back"))
+	case pullChecking:
+		rows = append(rows, "Checking "+m.pullModel+" in the Ollama library...", "", gray.Render("Esc: cancel"))
+	case pullConfirm:
+		size := ""
+		if m.pullSize > 0 {
+			size = " (" + humanBytes(m.pullSize) + ")"
+		}
+		rows = append(rows, lipgloss.NewStyle().Foreground(colorGreen).Render("✓ "+m.pullModel+" found"+size), "", "Download it? (y/n)")
+	case pullDownloading:
+		frac := 0.0
+		if m.pullTotal > 0 {
+			frac = float64(m.pullDone) / float64(m.pullTotal)
+		}
+		barW := m.width - 24
+		if barW > 50 {
+			barW = 50
+		}
+		if barW < 10 {
+			barW = 10
+		}
+		line := fmt.Sprintf("%s / %s", humanBytes(m.pullDone), humanBytes(m.pullTotal))
+		if secs := time.Since(m.pullStart).Seconds(); secs >= 2 && m.pullDone > 0 {
+			speed := float64(m.pullDone) / secs
+			line += fmt.Sprintf(" • %s/s", humanBytes(int64(speed)))
+			if m.pullTotal > m.pullDone && speed > 0 {
+				eta := time.Duration(float64(m.pullTotal-m.pullDone)/speed) * time.Second
+				line += " • ETA " + formatDuration(eta)
 			}
-			rows = append(rows, gray.Render("Example: gemma3 + 4b gives gemma3:4b. Leave the second field empty for the default (latest).\nTab: switch field • Enter: check the library • Esc: back"))
-		case pullChecking:
-			rows = append(rows, "Checking "+m.pullModel+" in the Ollama library...", "", gray.Render("Esc: cancel"))
-		case pullConfirm:
-			size := ""
-			if m.pullSize > 0 {
-				size = " (" + humanBytes(m.pullSize) + ")"
-			}
-			rows = append(rows, lipgloss.NewStyle().Foreground(colorGreen).Render("✓ "+m.pullModel+" found"+size), "", "Download it? (y/n)")
-		case pullDownloading:
-			frac := 0.0
-			if m.pullTotal > 0 {
-				frac = float64(m.pullDone) / float64(m.pullTotal)
-			}
-			barW := m.width - 24
-			if barW > 50 {
-				barW = 50
-			}
-			if barW < 10 {
-				barW = 10
-			}
-			line := fmt.Sprintf("%s / %s", humanBytes(m.pullDone), humanBytes(m.pullTotal))
-			if secs := time.Since(m.pullStart).Seconds(); secs >= 2 && m.pullDone > 0 {
-				speed := float64(m.pullDone) / secs
-				line += fmt.Sprintf(" • %s/s", humanBytes(int64(speed)))
-				if m.pullTotal > m.pullDone && speed > 0 {
-					eta := time.Duration(float64(m.pullTotal-m.pullDone)/speed) * time.Second
-					line += " • ETA " + formatDuration(eta)
-				}
-			}
-			rows = append(rows,
-				      "Downloading "+m.pullModel,
-		 "",
-		 progressBar(frac, barW)+fmt.Sprintf(" %3.0f%%", frac*100),
-				      line,
-		 gray.Render(friendlyPullStatus(m.pullStatus)),
-				      "",
-		 gray.Render("Esc: cancel (what is already downloaded is kept)"))
+		}
+		rows = append(rows,
+			"Downloading "+m.pullModel,
+			"",
+			progressBar(frac, barW)+fmt.Sprintf(" %3.0f%%", frac*100),
+			line,
+			gray.Render(friendlyPullStatus(m.pullStatus)),
+			"",
+			gray.Render("Esc: cancel (what is already downloaded is kept)"))
 	}
 
 	if sl := m.statusLine(); sl != "" {
@@ -2022,11 +2032,11 @@ func checkRegistry(ref string) tea.Cmd {
 		defer resp.Body.Close()
 
 		switch resp.StatusCode {
-			case http.StatusOK:
-			case http.StatusNotFound:
-				return pullCheckedMsg{ref: ref, notFound: true}
-			default:
-				return pullCheckedMsg{ref: ref, err: fmt.Errorf("the library answered %s", resp.Status)}
+		case http.StatusOK:
+		case http.StatusNotFound:
+			return pullCheckedMsg{ref: ref, notFound: true}
+		default:
+			return pullCheckedMsg{ref: ref, err: fmt.Errorf("the library answered %s", resp.Status)}
 		}
 
 		var man struct {
@@ -2171,6 +2181,116 @@ func deleteModel(host, name string) tea.Cmd {
 		return deleteDoneMsg{name: name}
 	}
 }
+
+// --- Header ---
+
+// tokenMeter estimates how much of the context window the conversation uses
+// (about 4 characters per token) and picks a colour: green, yellow or red.
+func (m model) tokenMeter() (used int, percent float64, color lipgloss.Color) {
+	chars := 0
+	for _, msg := range m.messages {
+		chars += len(msg.Content) + len(msg.Thinking) + len(msg.Context)
+	}
+	for _, a := range m.attachments {
+		chars += len(a.Text)
+	}
+	used = chars / 4
+	percent = float64(used) / float64(m.effectiveCtx()) * 100
+	color = colorGreen
+	if percent > 75 {
+		color = colorYellow
+	}
+	if percent > 90 {
+		color = colorRed
+	}
+	return used, percent, color
+}
+
+// compactHeader is true on small windows (phones, tiny terminals), where the
+// header shrinks to a single line.
+func (m model) compactHeader() bool {
+	return m.width < 70 || m.height < 24
+}
+
+// headerLines is the height of the header, including its bottom border.
+func (m model) headerLines() int {
+	if m.compactHeader() {
+		return 2
+	}
+	return 3
+}
+
+func (m model) headerView(modelName string) string {
+	used, percent, color := m.tokenMeter()
+	gray := lipgloss.NewStyle().Foreground(colorGray)
+	pct := lipgloss.NewStyle().Foreground(color).Render(fmt.Sprintf(" %.0f%%", percent))
+
+	inner := m.width - 4
+	if inner < 20 {
+		inner = 20
+	}
+
+	// Capability badges: what the model can do, and whether its toggle is on.
+	var badges, icons []string
+	if m.supportsVision {
+		badges = append(badges, lipgloss.NewStyle().Foreground(colorCyan).Render("👁️ Vision"))
+		icons = append(icons, "👁️")
+	}
+	if m.supportsThinking {
+		style, word := gray, "OFF"
+		if m.useThinking {
+			style, word = lipgloss.NewStyle().Foreground(colorGreen), "ON"
+		}
+		badges = append(badges, style.Render("🧠 Think "+word))
+		icons = append(icons, style.Render("🧠"))
+	}
+	if m.supportsTools {
+		style, word := gray, "OFF"
+		if m.useTools {
+			style, word = lipgloss.NewStyle().Foreground(colorGreen), "ON"
+		}
+		badges = append(badges, style.Render("🛠️ Tools "+word))
+		icons = append(icons, style.Render("🛠️"))
+	}
+
+	// Small windows: everything on one line.
+	if m.compactHeader() {
+		text := aiLabelStyle.Render(modelName) + " " + colorBar(percent/100, 8, color) + pct
+		if len(icons) > 0 {
+			text += " " + strings.Join(icons, " ")
+		}
+		return headerStyle.Width(m.width - 2).Render(lipgloss.NewStyle().MaxWidth(inner).Render(text))
+	}
+
+	// Line 1: model and host, badges on the right.
+	host := strings.TrimPrefix(strings.TrimPrefix(m.host, "http://"), "https://")
+	left := aiLabelStyle.Render(modelName) + gray.Render(" · "+host)
+	right := strings.Join(badges, "  ")
+
+	// Line 2: the context bar.
+	barW := inner / 4
+	if barW < 10 {
+		barW = 10
+	}
+	if barW > 30 {
+		barW = 30
+	}
+	meter := gray.Render("Context ") + colorBar(percent/100, barW, color) + pct +
+		gray.Render(fmt.Sprintf("  ~%d / %d tokens", used, m.effectiveCtx()))
+
+	line1, line2 := left, meter
+	if right != "" {
+		if gap := inner - lipgloss.Width(left) - lipgloss.Width(right); gap >= 2 {
+			line1 = left + strings.Repeat(" ", gap) + right
+		} else if gap := inner - lipgloss.Width(meter) - lipgloss.Width(right); gap >= 2 {
+			line2 = meter + strings.Repeat(" ", gap) + right
+		} // otherwise there is no room: the keys still work without the badges
+	}
+
+	text := lipgloss.NewStyle().MaxWidth(inner).Render(line1 + "\n" + line2)
+	return headerStyle.Width(m.width - 2).Render(text)
+}
+
 // pageStyle frames the full-screen views. FIXED: it now has a width, so long
 // help lines wrap at the window edge instead of running off-screen.
 func (m model) pageStyle() lipgloss.Style {
@@ -2202,17 +2322,21 @@ func (m *model) updateViewport() {
 			m.renderedCache[i] = m.renderMessage(msg, i, textWidth)
 		}
 
+		lines := strings.Count(m.renderedCache[i], "\n") + 1
 		if i == m.selectedMsg {
 			selectedMsgStartLine = currentLine
-			lines := strings.Count(m.renderedCache[i], "\n") + 1
 			selectedMsgEndLine = currentLine + lines - 1
-			currentLine += lines
-		} else {
-			currentLine += strings.Count(m.renderedCache[i], "\n") + 1
 		}
+		currentLine += lines
 
 		sb.WriteString(m.renderedCache[i])
 		sb.WriteString("\n")
+
+		// A blank line after every chat message (small notes stay packed together).
+		if msg.Role != "System" && i < len(m.messages)-1 {
+			sb.WriteString("\n")
+			currentLine++
+		}
 	}
 
 	m.viewport.SetContent(sb.String())
@@ -2231,85 +2355,89 @@ func (m *model) updateViewport() {
 func (m *model) renderMessage(msg ChatMessage, i int, textWidth int) string {
 	isSelected := (i == m.selectedMsg && m.focusMode == "list")
 
-	var label string
-	if msg.Role == "You" {
-		label = "You:"
-	} else if msg.Role == "AI" {
-		label = "AI:"
-	} else {
-		label = "•"
-	}
-
 	pointer := "   "
 	if isSelected {
 		pointer = lipgloss.NewStyle().Foreground(colorCyan).Bold(true).Render(" > ")
 	}
 
-	var styledLabel string
-	if isSelected {
-		bg := colorCyan
-		if msg.Role == "AI" {
-			bg = colorPurple
-		}
-		if msg.Role == "System" {
-			bg = colorGray
-		}
-		styledLabel = lipgloss.NewStyle().Background(bg).Foreground(lipgloss.Color("0")).Bold(true).Render(" " + label + " ")
-	} else {
-		if msg.Role == "You" {
-			styledLabel = userLabelStyle.Render(label)
-		} else if msg.Role == "AI" {
-			styledLabel = aiLabelStyle.Render(label)
-		} else {
-			styledLabel = lipgloss.NewStyle().Foreground(colorGray).Italic(true).Render(label)
-		}
+	// One colour per role: cyan for you, purple for the AI, grey for notes.
+	roleColor := colorCyan
+	label := "You"
+	switch msg.Role {
+	case "AI":
+		roleColor = colorPurple
+		label = "AI"
+	case "System":
+		roleColor = colorGray
+		label = "•"
 	}
 
-	labelWidth := lipgloss.Width(styledLabel)
-	wrapWidth := textWidth - labelWidth - 1
+	var styledLabel string
+	switch {
+	case isSelected:
+		styledLabel = lipgloss.NewStyle().Background(roleColor).Foreground(lipgloss.Color("0")).Bold(true).Render(" " + label + " ")
+	case msg.Role == "System":
+		styledLabel = lipgloss.NewStyle().Foreground(colorGray).Italic(true).Render(label)
+	default:
+		styledLabel = lipgloss.NewStyle().Foreground(roleColor).Bold(true).Render(label)
+	}
+
+	// Notes (loaded model, attachments, errors...) stay on one compact line.
+	if msg.Role == "System" {
+		labelWidth := lipgloss.Width(styledLabel)
+		w := textWidth - labelWidth - 1
+		if w < 10 {
+			w = 10
+		}
+		lines := strings.Split(lipgloss.NewStyle().Width(w).Render(msg.Content), "\n")
+		out := []string{styledLabel + " " + lines[0]}
+		indent := strings.Repeat(" ", labelWidth+1)
+		for _, l := range lines[1:] {
+			out = append(out, indent+l)
+		}
+		return lipgloss.JoinHorizontal(lipgloss.Top, pointer, strings.Join(out, "\n"))
+	}
+
+	// You / AI: the coloured label gets its own line, the text sits next to a coloured bar.
+	wrapWidth := textWidth - 2
 	if wrapWidth < 10 {
 		wrapWidth = 10
 	}
 
-	var finalContent strings.Builder
+	var body strings.Builder
 
 	if msg.Role == "AI" && msg.Thinking != "" && m.showThinking {
 		thoughtStyle := lipgloss.NewStyle().Foreground(colorGray).Italic(true)
 		wrappedThoughts := lipgloss.NewStyle().Width(wrapWidth).Render(msg.Thinking)
-		finalContent.WriteString(thoughtStyle.Render("🤔 [Thinking...]"))
-		finalContent.WriteString("\n")
-		finalContent.WriteString(thoughtStyle.Render(wrappedThoughts))
-		finalContent.WriteString("\n\n")
+		body.WriteString(thoughtStyle.Render("🤔 [Thinking...]"))
+		body.WriteString("\n")
+		body.WriteString(thoughtStyle.Render(wrappedThoughts))
+		body.WriteString("\n\n")
 	}
 
 	var renderedText string
 	if msg.Role == "AI" && m.renderer != nil {
 		out, err := m.renderer.Render(msg.Content)
 		if err == nil {
-			renderedText = strings.TrimSuffix(out, "\n")
+			renderedText = strings.Trim(out, "\n")
 		} else {
 			renderedText = lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
 		}
 	} else {
 		renderedText = lipgloss.NewStyle().Width(wrapWidth).Render(msg.Content)
 	}
-	finalContent.WriteString(renderedText)
+	body.WriteString(renderedText)
 	if msg.Role == "AI" && msg.Elapsed != "" {
-		finalContent.WriteString("\n")
-		finalContent.WriteString(lipgloss.NewStyle().Foreground(colorGray).Italic(true).Render("⏱️ " + msg.Elapsed))
+		body.WriteString("\n")
+		body.WriteString(lipgloss.NewStyle().Foreground(colorGray).Italic(true).Render("⏱️ " + msg.Elapsed))
 	}
 
-	lines := strings.Split(finalContent.String(), "\n")
-
-	var combined []string
-	combined = append(combined, styledLabel+" "+lines[0])
-	indent := strings.Repeat(" ", labelWidth+1)
-	for j := 1; j < len(lines); j++ {
-		combined = append(combined, indent+lines[j])
+	bar := lipgloss.NewStyle().Foreground(roleColor).Render("▎")
+	lines := append([]string{styledLabel}, strings.Split(body.String(), "\n")...)
+	for k := range lines {
+		lines[k] = bar + " " + lines[k]
 	}
-
-	block := strings.Join(combined, "\n")
-	return lipgloss.JoinHorizontal(lipgloss.Top, pointer, block)
+	return lipgloss.JoinHorizontal(lipgloss.Top, pointer, strings.Join(lines, "\n"))
 }
 
 func (m model) renderScrollableList(items []string, cursor int, maxHeight int) string {
@@ -2351,7 +2479,7 @@ func (m model) View() string {
 
 	if m.state == stateError {
 		errBox := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(colorRed).Padding(1, 2).
-		Render(lipgloss.NewStyle().Foreground(colorRed).Bold(true).Render("ERROR: ") + m.errText)
+			Render(lipgloss.NewStyle().Foreground(colorRed).Bold(true).Render("ERROR: ") + m.errText)
 		return lipgloss.NewStyle().Margin(2, 4).Render(errBox)
 	}
 
@@ -2469,46 +2597,7 @@ func (m model) View() string {
 
 	// --- CHAT STATE UI ---
 	modelName := m.models[m.cursor]
-	totalChars := 0
-	for _, msg := range m.messages {
-		totalChars += len(msg.Content) + len(msg.Thinking) + len(msg.Context)
-	}
-	for _, a := range m.attachments {
-		totalChars += len(a.Text)
-	}
-
-	approxTokens := totalChars / 4
-	percent := (float64(approxTokens) / float64(m.effectiveCtx())) * 100
-	meterColor := colorGreen
-	if percent > 75 {
-		meterColor = colorYellow
-	}
-	if percent > 90 {
-		meterColor = colorRed
-	}
-	meter := lipgloss.NewStyle().Foreground(meterColor).Render(fmt.Sprintf("[%.0f%% Context]", percent))
-
-	capStr := ""
-	if m.supportsVision {
-		capStr += " [👁️ Vision]"
-	}
-	if m.supportsThinking {
-		status := "OFF"
-		if m.useThinking {
-			status = "ON"
-		}
-		capStr += fmt.Sprintf(" [🧠 Thinking: %s]", status)
-	}
-	if m.supportsTools {
-		status := "OFF"
-		if m.useTools {
-			status = "ON"
-		}
-		capStr += fmt.Sprintf(" [🛠️ Tools: %s]", status)
-	}
-
-	headerText := fmt.Sprintf("Model: %s %s %s", aiLabelStyle.Render(modelName), meter, lipgloss.NewStyle().Foreground(colorGray).Render(capStr))
-	header := headerStyle.Width(m.width - 2).Render(headerText)
+	header := m.headerView(modelName)
 
 	vpView := m.viewport.View()
 	taView := textareaStyle.Render(m.textarea.View())
@@ -2635,7 +2724,7 @@ func main() {
 
 	r, _ := glamour.NewTermRenderer(
 		glamour.WithStylePath("dark"),
-					glamour.WithWordWrap(70),
+		glamour.WithWordWrap(70),
 	)
 
 	m := model{

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 	"unicode/utf8"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 func testFloat(v float64) *float64 { return &v }
@@ -352,5 +354,51 @@ func TestProcessFileErrors(t *testing.T) {
 	}
 	if _, ok := processFile(filepath.Join(t.TempDir(), "missing.txt")).(fileErrorMsg); !ok {
 		t.Error("a missing file should give a fileErrorMsg")
+	}
+}
+
+// --- header ---
+
+func TestTokenMeter(t *testing.T) {
+	tests := []struct {
+		name  string
+		chars int
+		color lipgloss.Color
+	}{
+		{"low usage is green", 400, colorGreen},
+		{"above 75% is yellow", 4096 * 4 * 8 / 10, colorYellow},
+		{"above 90% is red", 4096 * 4, colorRed},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := model{messages: []ChatMessage{{Role: "You", Content: strings.Repeat("a", tt.chars)}}}
+			used, _, color := m.tokenMeter()
+			if used != tt.chars/4 {
+				t.Errorf("used = %d, want %d", used, tt.chars/4)
+			}
+			if color != tt.color {
+				t.Errorf("color = %v, want %v", color, tt.color)
+			}
+		})
+	}
+}
+
+func TestHeaderLines(t *testing.T) {
+	tests := []struct {
+		name          string
+		width, height int
+		want          int
+	}{
+		{"big window has the two-line header", 100, 40, 3},
+		{"narrow window is compact", 50, 40, 2},
+		{"short window is compact", 100, 20, 2},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := model{width: tt.width, height: tt.height}
+			if got := m.headerLines(); got != tt.want {
+				t.Errorf("headerLines() = %d, want %d", got, tt.want)
+			}
+		})
 	}
 }
