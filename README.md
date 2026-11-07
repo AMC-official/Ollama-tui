@@ -289,7 +289,7 @@ The tests cover the parts that don't need a screen: message building, the calcul
 
 > The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
-## Known Limitations
+## ⚠️ Known Limitations
 
 - Tool calling depends on the selected model, and small models sometimes call tools badly.
 - The context meter is an estimate (about 4 characters per token). For Ollama it uses your context setting (4096 by default), for cloud models the model's own limit.
