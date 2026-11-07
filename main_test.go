@@ -613,3 +613,244 @@ func TestSafePathAndFileTools(t *testing.T) {
 		t.Errorf("list_files should show files and folders but not hidden ones, got %q", out)
 	}
 }
+
+// --- cloud backends (OpenRouter / OpenAI) ---
+
+func collect(sse string) ([]OllamaGenerateRes, error) {
+	var got []OllamaGenerateRes
+	err := streamOpenAI(strings.NewReader(sse), func(r OllamaGenerateRes) bool {
+		got = append(got, r)
+		return true
+	})
+	return got, err
+}
+
+func TestStreamOpenAIText(t *testing.T) {
+	sse := ": OPENROUTER PROCESSING\n\n" +
+	"data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n" +
+	"data: {\"choices\":[{\"delta\":{\"content\":\"lo\",\"reasoning\":\"hmm\"}}]}\n\n" +
+	"data: [DONE]\n\n"
+	got, err := collect(sse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []OllamaGenerateRes{{Response: "Hel"}, {Response: "lo", Thinking: "hmm"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestStreamOpenAIToolCall(t *testing.T) {
+	// The arguments arrive in pieces and must be glued together.
+	sse := "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"calculate\",\"arguments\":\"{\\\"expression\\\":\"}}]}}]}\n\n" +
+	"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"2+2\\\"}\"}}]}}]}\n\n" +
+	"data: [DONE]\n\n"
+	got, err := collect(sse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []OllamaGenerateRes{{ToolCalls: []ToolCall{{
+		ID:       "call_1",
+		Function: ToolCallFunction{Name: "calculate", Arguments: map[string]interface{}{"expression": "2+2"}},
+	}}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestStreamOpenAIErrors(t *testing.T) {
+	if _, err := collect("data: {\"error\":{\"message\":\"rate limited\",\"code\":429}}\n\n"); err == nil || !strings.Contains(err.Error(), "rate limited") {
+		t.Errorf("an error chunk should become an error, got %v", err)
+	}
+	if _, err := collect("data: {\"error\":\"plain text error\"}\n\n"); err == nil || !strings.Contains(err.Error(), "plain text error") {
+		t.Errorf("an error given as a plain string should work too, got %v", err)
+	}
+}
+
+func TestApiErrorDetail(t *testing.T) {
+	if got := apiErrorDetail([]byte(`{"error":{"message":"No auth credentials found","code":401}}`)); got != "No auth credentials found" {
+		t.Errorf("got %q", got)
+	}
+	if got := apiErrorDetail([]byte("Bad gateway")); got != "Bad gateway" {
+		t.Errorf("non-JSON bodies should come back as they are, got %q", got)
+	}
+}
+
+func TestToOpenAIMessages(t *testing.T) {
+	png := base64.StdEncoding.EncodeToString([]byte("\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 32)))
+	call := ToolCall{Function: ToolCallFunction{Name: "calculate", Arguments: map[string]interface{}{"expression": "2+2"}}}
+	got := toOpenAIMessages([]OllamaChatMsg{
+		{Role: "system", Content: "be nice"},
+		{Role: "user", Content: "what is this?", Images: []string{png}},
+		{Role: "assistant", ToolCalls: []ToolCall{call}}, // a local model's call has no id
+		{Role: "tool", ToolName: "calculate", Content: "4"},
+		{Role: "assistant", Content: "It is 4."},
+	})
+	if len(got) != 5 {
+		t.Fatalf("got %d messages, want 5", len(got))
+	}
+
+	parts, ok := got[1].Content.([]oaiPart)
+	if !ok || len(parts) != 2 || parts[1].Type != "image_url" || !strings.HasPrefix(parts[1].ImageURL.URL, "data:image/png;base64,") {
+		t.Errorf("images should become image_url parts, got %+v", got[1].Content)
+	}
+
+	if got[2].Content != nil || len(got[2].ToolCalls) != 1 {
+		t.Fatalf("assistant tool request: %+v", got[2])
+	}
+	id := got[2].ToolCalls[0].ID
+	if id == "" || got[2].ToolCalls[0].Function.Arguments != `{"expression":"2+2"}` {
+		t.Errorf("tool call needs an id and JSON-string arguments, got %+v", got[2].ToolCalls[0])
+	}
+	if got[3].Role != "tool" || got[3].ToolCallID != id {
+		t.Errorf("the result must point at its call (%q), got %+v", id, got[3])
+	}
+	if got[4].Content != "It is 4." {
+		t.Errorf("got %+v", got[4])
+	}
+
+	// Ids from the provider are kept as they are.
+	withID := toOpenAIMessages([]OllamaChatMsg{
+		{Role: "assistant", ToolCalls: []ToolCall{{ID: "abc", Function: ToolCallFunction{Name: "read_file"}}}},
+		{Role: "tool", ToolName: "read_file", ToolCallID: "abc", Content: "x"},
+	})
+	if withID[0].ToolCalls[0].ID != "abc" || withID[1].ToolCallID != "abc" {
+		t.Errorf("provider ids should be kept: %+v", withID)
+	}
+	if withID[0].ToolCalls[0].Function.Arguments != "{}" {
+		t.Errorf("missing arguments should become {}, got %q", withID[0].ToolCalls[0].Function.Arguments)
+	}
+}
+
+func TestImageDataURL(t *testing.T) {
+	png := base64.StdEncoding.EncodeToString([]byte("\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 32)))
+	jpg := base64.StdEncoding.EncodeToString([]byte("\xff\xd8\xff\xe0" + strings.Repeat("\x00", 32)))
+	junk := base64.StdEncoding.EncodeToString([]byte("hello hello hello"))
+	if got := imageDataURL(png); !strings.HasPrefix(got, "data:image/png;base64,") {
+		t.Errorf("got %q", got)
+	}
+	if got := imageDataURL(jpg); !strings.HasPrefix(got, "data:image/jpeg;base64,") {
+		t.Errorf("got %q", got)
+	}
+	if got := imageDataURL(junk); !strings.HasPrefix(got, "data:image/png;base64,") {
+		t.Errorf("unknown data should fall back to png, got %q", got)
+	}
+}
+
+func TestParseCloudModels(t *testing.T) {
+	router := `{"data":[
+	{"id":"openai/gpt-4o","context_length":128000,"architecture":{"input_modalities":["text","image"]},"supported_parameters":["tools","temperature"]},
+	{"id":"meta-llama/llama-3.1-8b-instruct:free","context_length":131072,"architecture":{"input_modalities":["text"]},"supported_parameters":["temperature"]}
+	]}`
+	models, err := parseCloudModels(backendOpenRouter, []byte(router))
+	if err != nil || len(models) != 2 {
+		t.Fatalf("got %v, %v", models, err)
+	}
+	// Sorted by id.
+	if models[0].ID != "meta-llama/llama-3.1-8b-instruct:free" || models[0].Vision || models[0].Tools || models[0].Context != 131072 {
+		t.Errorf("unexpected first model: %+v", models[0])
+	}
+	if models[1].ID != "openai/gpt-4o" || !models[1].Vision || !models[1].Tools || models[1].Context != 128000 {
+		t.Errorf("unexpected second model: %+v", models[1])
+	}
+
+	openai := `{"data":[{"id":"gpt-4o"},{"id":"text-embedding-3-small"},{"id":"whisper-1"},{"id":"o3-mini"},{"id":"gpt-4o-realtime-preview"},{"id":"dall-e-3"}]}`
+	models, err = parseCloudModels(backendOpenAI, []byte(openai))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, m := range models {
+		ids = append(ids, m.ID)
+	}
+	if !reflect.DeepEqual(ids, []string{"gpt-4o", "o3-mini"}) {
+		t.Errorf("only chat models should stay, got %v", ids)
+	}
+	if !models[0].Vision || !models[0].Tools || models[0].Thinking {
+		t.Errorf("gpt-4o: %+v", models[0])
+	}
+	if !models[1].Thinking {
+		t.Errorf("o3-mini should count as a reasoning model: %+v", models[1])
+	}
+
+	if _, err := parseCloudModels(backendOpenRouter, []byte("not json")); err == nil {
+		t.Error("bad JSON should be an error")
+	}
+}
+
+func TestBackendHelpers(t *testing.T) {
+	if backendLabel(backendOpenRouter) != "OpenRouter" || backendLabel(backendOpenAI) != "OpenAI" || backendLabel("") != "Ollama (local)" {
+		t.Error("unexpected backend labels")
+	}
+	if cloudBase(backendOpenRouter) != "https://openrouter.ai/api/v1" || cloudBase(backendOpenAI) != "https://api.openai.com/v1" || cloudBase(backendOllama) != "" {
+		t.Error("unexpected base URLs")
+	}
+
+	m := model{backend: backendOpenRouter, config: Config{OpenRouterKey: "saved"}}
+	if !m.isCloud() || m.apiKey() != "saved" {
+		t.Errorf("isCloud/apiKey wrong: %v %q", m.isCloud(), m.apiKey())
+	}
+
+	t.Setenv("OPENAI_API_KEY", "from-env")
+	m = model{backend: backendOpenAI}
+	if got := m.apiKey(); got != "from-env" {
+		t.Errorf("the environment variable should be used when nothing is saved, got %q", got)
+	}
+	m.config.OpenAIKey = "saved"
+	if got := m.apiKey(); got != "saved" {
+		t.Errorf("a saved key wins over the environment, got %q", got)
+	}
+
+	if (model{}).isCloud() || (model{backend: backendOllama}).isCloud() {
+		t.Error("Ollama is not a cloud backend")
+	}
+}
+
+func TestCloudContextSize(t *testing.T) {
+	m := model{backend: backendOpenRouter, modelMaxCtx: 32000, config: Config{NumCtx: 8192}}
+	if got := m.numCtxSetting(); got != 0 {
+		t.Errorf("num_ctx is an Ollama setting, got %d", got)
+	}
+	if got := m.effectiveCtx(); got != 32000 {
+		t.Errorf("the meter should use the model's own limit, got %d", got)
+	}
+	m.modelMaxCtx = 0
+	if got := m.effectiveCtx(); got != 128000 {
+		t.Errorf("unknown limits fall back to 128000, got %d", got)
+	}
+}
+
+func TestModelFilter(t *testing.T) {
+	m := model{models: []string{"llama3", "gemma3:4b", "gemma3:270m", "qwen3"}}
+	if got := m.visibleModels(); len(got) != 4 {
+		t.Errorf("no filter shows everything, got %v", got)
+	}
+
+	m.filter = "GEMMA" // case does not matter
+	if got := m.visibleModels(); !reflect.DeepEqual(got, []int{1, 2}) {
+		t.Errorf("got %v, want [1 2]", got)
+	}
+
+	m.cursor = 0 // hidden by the filter: the selection jumps to the first match
+	m.moveCursor(0)
+	if m.cursor != 1 {
+		t.Errorf("cursor = %d, want 1", m.cursor)
+	}
+	m.moveCursor(1)
+	m.moveCursor(1) // stops at the end
+	if m.cursor != 2 {
+		t.Errorf("cursor = %d, want 2", m.cursor)
+	}
+	m.moveCursor(-1)
+	m.moveCursor(-1) // stops at the start
+	if m.cursor != 1 {
+		t.Errorf("cursor = %d, want 1", m.cursor)
+	}
+
+	m.filter = "nothing matches this"
+	m.cursor = 3
+	m.moveCursor(1) // no visible models: must not crash or move
+	if m.cursor != 3 {
+		t.Errorf("cursor should stay put, got %d", m.cursor)
+	}
+}
