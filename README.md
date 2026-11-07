@@ -8,6 +8,17 @@
 <i>The official logo of Ollama-TUI.</i>
 </p>
 
+<p align="center">
+  <a href="https://github.com/AMC-official/Ollama-tui/releases"><img src="https://img.shields.io/github/v/release/AMC-official/Ollama-tui" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL v3"></a>
+</p>
+
+Ollama-TUI is a fast, keyboard-first terminal client for [Ollama](https://ollama.com/) built entirely in Go. It also talks to **OpenRouter** and **OpenAI**, so one lightweight app covers your local models and the cloud ones. It focuses on responsiveness, native terminal rendering, and a workflow that feels at home in a shell rather than a browser.
+
+Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD for maximum speed and reliability.
+
+> Note: AI assistants (DeepSeek and Claude) were used in the process of making this project to assist with development and iteration.
+
 ## 📸 Screenshots
 
 ### Startup
@@ -22,27 +33,22 @@
 
 ---
 
-### Chat Mode
+### Chat Mode & List Mode
 
-<p align="center">
-  <img src="assets/ollama-tui-usage-chat-mode.png" alt="Chat Mode" width="900">
-</p>
-
-<p align="center">
-<i>Native markdown rendering, streaming responses, context meter, and attachments.</i>
-</p>
-
----
-
-### List Mode
-
-<p align="center">
-  <img src="assets/ollama-list-mode.png" alt="List Mode" width="900">
-</p>
-
-<p align="center">
-<i>Browse conversations, copy responses, branch chats, and navigate with Vim-style controls.</i>
-</p>
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <img src="assets/ollama-tui-usage-chat-mode.png" alt="Chat Mode" width="100%">
+      <br>
+      <i>Chat Mode: native markdown rendering, streaming responses, context meter, and attachments.</i>
+    </td>
+    <td align="center" width="50%">
+      <img src="assets/ollama-list-mode.png" alt="List Mode" width="100%">
+      <br>
+      <i>List Mode: browse conversations, copy responses, branch chats, and navigate with Vim-style controls.</i>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -58,43 +64,63 @@
 
 --------------------------------------------
 
-Ollama-TUI is a fast, keyboard-first terminal client for [Ollama](https://ollama.com/) built entirely in Go. It focuses on responsiveness, native terminal rendering, and a workflow that feels at home in a shell rather than a browser.
-
-Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI** provides a sleek, Vim-friendly, fully native chat experience right inside your terminal. Built and tested primarily on Linux and FreeBSD for maximum speed and reliability.
-
-> Note: DeepSeek was partially used in the process of making this project to assist with development and iteration.
-
 ## ✨ Features
 
+### 🧠 Backends & models
+
+* **Ollama, OpenRouter and OpenAI:** Cycle between them with `Ctrl+B` on the model screen. Your chat history carries over when you switch.
+* **Cloud models:** Hundreds of models through OpenRouter (including free `:free` ones) and OpenAI's chat models, with live streaming, vision, tools and reasoning text.
+* **API key screen:** Press `Ctrl+K` to add your keys (masked while you type). The `OPENROUTER_API_KEY` and `OPENAI_API_KEY` environment variables work too.
+* **Model filter:** Press `/` on the model screen to filter long lists (try `:free` on OpenRouter).
+* **Built-in Model Manager (local):** Pull new models from the Ollama library (`Ctrl+P`) with a size check, confirmation and a live progress bar showing speed and ETA. Delete models with confirmation (`Del`) or instantly (`Shift+D`).
+* **Capability Detection:** Automatically detects if your model supports Vision, Thinking, or Tools, and shows it in the header.
+* **Remote Ollama Support:** Connect to remote servers from the command line with the `--host` argument or from the model screen with `Ctrl+H`.
+* **Auto-Server Management:** Automatically starts `ollama serve` in the background when needed, and offers to stop it when you exit (only if Ollama-TUI started it).
+
+### 💬 Chatting
+
 * **Native & Fast:** Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lipgloss](https://github.com/charmbracelet/lipgloss). No web wrappers, no Electron, just pure terminal speed.
-* **Auto-Server Management:** Automatically boots `ollama serve` in the background when you launch it. Prompts to kill the server when you exit.
-* **Multi-Model Support:** Switch between your installed local models on the fly without losing your chat context.
-* **System Prompts:** Set a persistent system prompt (e.g., *"You are a UNIX graybeard"*) using the built-in editor.
-* **Context Meter:** Displays current context usage based on your configured context limit.
+* **Persistent Conversation Context:** The model remembers the whole conversation.
+* **Markdown Rendering:** Replies are rendered natively in the terminal.
+* **Cancelable Streams:** Stop the AI mid-generation with `Alt+S` if it starts yapping too much.
+* **Generation Timer:** A live "waiting for the model" counter while a model loads, and the total time shown under every reply.
+* **Thinking Viewer:** Press `Alt+T` to see the model's chain-of-thought (gray italic text) before the final response.
+* **Branching:** Go back in time, pick a past message, and branch the conversation like ChatGPT.
 * **Chat History:** Save your chats to `.json` files and load them back up anytime.
-* **Persistent Conversation Context:** Uses Ollama's chat API so the model remembers the full conversation.
-* **Branching:** Go back in time, edit a past message, and branch the conversation like ChatGPT.
 * **Vim-Style Navigation:** Use `Tab` to toggle between typing and "List Mode" to scroll and select messages.
 * **Clipboard Integration:** Copy selected AI responses directly to your system clipboard.
-* **Cancelable Streams:** Stop the AI mid-generation if it starts yapping too much.
-* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.sh`.
-* **Capability Detection:** Automatically detects if your model supports Vision, Thinking, or Tools.
-* **Thinking Viewer:** Press `Alt+T` to see the model's internal chain-of-thought (gray italic text) before the final response.
-* **Toggles:** Turn Thinking (`Ctrl+T`) or Tool use (`Ctrl+Y`) on and off on the fly.
-* **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
-* **Remote Ollama Support:** Connect to remote servers from the command line with the `host` argument or directly from the model selection screen with `Ctrl + H`.
-* **Inference Settings:** Configure system prompt, temperature, top P, top K and context tokens from a built-in settings screen (`P` in List Mode).
-* **Built-in Model Manager:** Browse installed models, pull new models directly from the Ollama library (`Ctrl+P`), view download sizes, and track download progress with speed and ETA.
-* **Model Management:** Delete installed models with confirmation (`Del`) or instantly (`Shift+D`).
-* **Generation Timer:** Displays how long each response took to generate and shows a live waiting timer while the model is loading.
 
+### 🛠️ Tools
+
+When the model supports tool calling (toggle with `Ctrl+Y`), the AI can use these tools. They all run locally on your machine and are read-only:
+
+| Tool | What it does |
+| --- | --- |
+| `calculate` | Exact math (`+ - * / % ^`, parentheses, `pi`, `e`, `sqrt`, `abs`, `round`, `floor`, `ceil`), so small models stop guessing at arithmetic |
+| `get_current_time` | Current date and time on your computer, optionally in another time zone |
+| `list_files` | Lists files and folders, limited to the folder you started Ollama-TUI in |
+| `read_file` | Reads a text file (first 20,000 characters), limited to the same folder |
+
+File tools never show hidden files or folders (like `.env` or `.ssh`), refuse paths outside the start folder (also through symlinks), and reject binary files. Each answer may use up to 5 rounds of tool calls.
+
+### 📎 Attachments
+
+* **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.sh`.
+* **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
+* **Attachment Manager:** List, replace, delete, or edit attachments (`Ctrl+L`).
+
+### 🎛️ Customization
+
+* **Settings Screen:** Configure the system prompt, temperature, top P, top K and context tokens in one place (`Shift+P` in List Mode). Blank fields use the model's own defaults.
+* **Header with context bar:** Shows the model, the server, capability badges and how full the context window is (green, then yellow, then red). It shrinks to one line on small screens like phones.
+* **Coloured messages:** `You` and `AI` labels in their own colours, with spacing between messages.
 
 ## 📦 Prerequisites
 
 Before you build or run this, ensure you have:
 1. **Go** (1.26+ is recommended) installed.
-2. **Ollama** installed and available in your `$PATH`.
-33. **No model is required beforehand.** If none are installed, Ollama-TUI opens the built-in Model Manager so you can download one.
+2. **Ollama** installed and available in your `$PATH` if you want to use local models. It's not needed if you only use OpenRouter or OpenAI.
+3. **No model is required beforehand.** If none are installed, Ollama-TUI opens the built-in Model Manager so you can download one.
 
 ### 🐧 POSIX (FreeBSD, Linux, macOS) Dependencies
 
@@ -136,39 +162,60 @@ For Windows (PowerShell):
 ### 3. Manual Run (Without Installing)
 
 ```bash
-go run main.go
+go run .
 ```
 
 ### 4. Build it by yourself
+
 ```bash
 git clone https://github.com/AMC-official/Ollama-tui.git
-cd ~/ollama-tui
+cd Ollama-tui
 go mod tidy
-go build -o ollama-tui main.go
+go build -o ollama-tui .
 ```
 
-### 5. Connecting to a Remote Server
+### 5. Download a ready-made binary
 
-You can run Ollama-TUI on one machine (like your phone or a laptop) and connect to an Ollama server running on another machine (like your main PC). 
+Prebuilt binaries for Linux, macOS, FreeBSD, OpenBSD, NetBSD and Windows are attached to every [release](https://github.com/AMC-official/Ollama-tui/releases).
+
+---
+
+## ☁️ Using OpenRouter or OpenAI
+
+1. Create an API key at [openrouter.ai/keys](https://openrouter.ai/keys) or [platform.openai.com/api-keys](https://platform.openai.com/api-keys).
+2. Start Ollama-TUI and, on the model screen, press `Ctrl+K`. Paste the key, then press `Ctrl+S`. (Or set `OPENROUTER_API_KEY` / `OPENAI_API_KEY` in your environment instead.)
+3. Press `Ctrl+B` to switch to **OpenRouter** or **OpenAI**. The model list loads, and `/` filters it.
+4. Pick a model with `Enter` and chat as usual.
+
+> **Privacy:** With a cloud backend, your messages (and attached files and images) are sent to the provider you chose. Saved keys are stored as plain text in your config file (`~/.config/ollama-tui/config.json` on Linux), which only your user can read. Using the environment variables avoids storing a key at all.
+>
+> **Cost:** OpenAI and most OpenRouter models are paid. OpenRouter's `:free` models are free but rate limited. Ollama-TUI does not track spending.
+
+## 🌐 Connecting to a Remote Ollama Server
+
+You can run Ollama-TUI on one machine (like your phone or a laptop) and connect to an Ollama server running on another machine (like your main PC).
 
 **On the server machine (the one running Ollama):**
 You must expose Ollama to your local network. By default, Ollama only listens to `localhost`. Start it with:
 ```bash
 OLLAMA_HOST=0.0.0.0 ollama serve
 ```
-On the client machine (the one running Ollama-TUI):
+**On the client machine (the one running Ollama-TUI):**
 Find the server's **local IP address** (e.g., 192.168.1.50), then run:
 ```bash
 ollama-tui --host http://192.168.1.50:11434
 ```
 
-> (Alternatively, run ollama-tui and press Ctrl+H on the model selection screen to enter the IP address.)
+> Alternatively, run `ollama-tui` and press `Ctrl+H` on the model selection screen to enter the address.
 > If no local models are found on first launch, Ollama-TUI automatically opens the Model Manager so you can download one without leaving the application.
+
 ---
 
 ## ⌨️ Keybindings
 
 Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List Mode (navigating).
+
+### Chat & List modes
 
 | Key | Mode | Action |
 | --- | --- | --- |
@@ -177,23 +224,55 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Ctrl + L | Chat | List attached attachments and edit them |
 | Enter | Chat | Send message to AI |
 | Alt + S | Any | Cancel the AI mid-generation |
+| Alt + T | Chat | Toggle the display of the model's thinking process |
+| Ctrl + T | Any | Toggle Thinking mode (if supported by the model) |
+| Ctrl + Y | Any | Toggle Tooling mode (if supported by the model) |
 | w / z / s | List | Scroll up / down (Supports AZERTY & QWERTY) |
 | Up / Down | List | Select a specific message |
 | Shift + C | List | Copy the selected message to clipboard |
 | Shift + N | List | Start a completely new chat |
-| Shift + S | List | Switch to a different Ollama model |
-| Shift + P | List | Open the Settings screen (System Prompt, Temperature, Top-P, Top-K, Context) |
+| Shift + S | List | Switch to a different model |
+| Shift + P | List | Open the Settings screen (system prompt, temperature, top P, top K, context) |
 | Shift + J | List | Save current chat to `.json` |
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
-| Ctrl + C | Any | Exit app (prompts to kill Ollama server) |
-| Alt + T | Chat | Toggle the display of the model's thinking process |
-| Ctrl + T | Any | Toggle Thinking mode (if supported by model) |
-| Ctrl + Y | Any | Toggle Tooling mode (if supported by model) |
-| Ctrl + H | Model Selection | Change the Ollama host URL |
-Ctrl + P |	Model Selection	| Pull a model from the Ollama library
-Del	| Model Selection	| Delete selected model (confirmation)
-Shift + D |	Model Selection	| Delete selected model immediately
+| Ctrl + C | Any | Exit app (offers to stop the Ollama server if Ollama-TUI started it) |
+
+### Model selection screen
+
+| Key | Action |
+| --- | --- |
+| Up / Down (or k / j) | Move through the list |
+| Enter | Select the model |
+| Ctrl + B | Cycle the backend: Ollama, OpenRouter, OpenAI |
+| Ctrl + K | Add or edit your API keys |
+| / | Filter the list (Enter keeps the filter, Esc clears it) |
+| Ctrl + H | Change the Ollama host URL (local Ollama only) |
+| Ctrl + P | Pull a model from the Ollama library (local Ollama only) |
+| Del (or d) | Delete the selected model, with confirmation (local Ollama only) |
+| Shift + D | Delete the selected model immediately (local Ollama only) |
+
+### Settings, API keys and Pull screens
+
+| Key | Action |
+| --- | --- |
+| Tab / Shift + Tab | Switch field |
+| Enter | Next field (saves on the last one) |
+| Ctrl + S | Save (Settings and API keys) |
+| Esc | Cancel or go back (during a download it cancels and keeps what was already downloaded) |
+
+## 💾 Where things are stored
+
+* **Settings and keys:** `config.json` in your user config folder (`~/.config/ollama-tui/` on Linux).
+* **Saved chats:** `~/.local/share/ollama-tui/`.
+
+## 🧪 Development & Tests
+
+```bash
+go test -v .
+```
+
+The tests cover the parts that don't need a screen: message building, the calculator and file-tool safety checks, the OpenAI/OpenRouter stream parser, model list parsing and the formatting helpers. Please run them before opening a pull request.
 
 ## 🖥️ Platform Support
 
@@ -207,23 +286,26 @@ Shift + D |	Model Selection	| Delete selected model immediately
 - Experimental / untested:
   - NetBSD
   - OpenBSD
- 
+
 > The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
 ## Known Limitations
 
-- Tool calling support is still evolving and may vary depending on the selected model.
-- Context meter currently assumes the configured context window.
-- Some inference settings are experimental.
-
-
+- Tool calling depends on the selected model, and small models sometimes call tools badly.
+- The context meter is an estimate (about 4 characters per token). For Ollama it uses your context setting (4096 by default), for cloud models the model's own limit.
+- For OpenAI, vision, tools and reasoning support are guessed from the model name, because the API doesn't report them.
+- On cloud backends the Thinking toggle only controls whether reasoning text is shown. OpenAI's reasoning models also reject a custom temperature, so leave that field empty for them.
+- Custom OpenAI-compatible endpoints (like LM Studio or `llama-server`) can't be configured yet.
+- Pulling, deleting and changing the host only work for local Ollama.
 
 ## 🛠️ Built With
 
-* Bubble Tea - The TUI framework.
-* Lipgloss - Style definitions for nice terminal layouts.
-* Glamour - The text formatting stylizer
-* Ollama API - The local AI backend.
+* [Bubble Tea](https://github.com/charmbracelet/bubbletea) - The TUI framework.
+* [Bubbles](https://github.com/charmbracelet/bubbles) - Text inputs and scrolling views.
+* [Lipgloss](https://github.com/charmbracelet/lipgloss) - Style definitions for nice terminal layouts.
+* [Glamour](https://github.com/charmbracelet/glamour) - Markdown rendering in the terminal.
+* [Ollama API](https://github.com/ollama/ollama/blob/main/docs/api.md) - The local AI backend.
+* [OpenRouter](https://openrouter.ai/docs) and [OpenAI](https://platform.openai.com/docs) APIs - The cloud backends.
 
 > Note: In v1.1.3 and earlier, the `install.ps1` file may appear in non-Windows archives due to a `goreleaser.yml` misconfiguration. This is harmless and will be fixed in future releases. (whoops! sorry about that.)
 
