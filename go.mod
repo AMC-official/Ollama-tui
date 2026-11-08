@@ -1,4 +1,4 @@
-module ollama-tui
+module github.com/AMC-official/Ollama-tui
 
 go 1.26.10
 
