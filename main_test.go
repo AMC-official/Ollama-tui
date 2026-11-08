@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -627,9 +629,9 @@ func collect(sse string) ([]OllamaGenerateRes, error) {
 
 func TestStreamOpenAIText(t *testing.T) {
 	sse := ": OPENROUTER PROCESSING\n\n" +
-	"data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n" +
-	"data: {\"choices\":[{\"delta\":{\"content\":\"lo\",\"reasoning\":\"hmm\"}}]}\n\n" +
-	"data: [DONE]\n\n"
+		"data: {\"choices\":[{\"delta\":{\"content\":\"Hel\"}}]}\n\n" +
+		"data: {\"choices\":[{\"delta\":{\"content\":\"lo\",\"reasoning\":\"hmm\"}}]}\n\n" +
+		"data: [DONE]\n\n"
 	got, err := collect(sse)
 	if err != nil {
 		t.Fatal(err)
@@ -643,8 +645,8 @@ func TestStreamOpenAIText(t *testing.T) {
 func TestStreamOpenAIToolCall(t *testing.T) {
 	// The arguments arrive in pieces and must be glued together.
 	sse := "data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"calculate\",\"arguments\":\"{\\\"expression\\\":\"}}]}}]}\n\n" +
-	"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"2+2\\\"}\"}}]}}]}\n\n" +
-	"data: [DONE]\n\n"
+		"data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"2+2\\\"}\"}}]}}]}\n\n" +
+		"data: [DONE]\n\n"
 	got, err := collect(sse)
 	if err != nil {
 		t.Fatal(err)
@@ -739,8 +741,8 @@ func TestImageDataURL(t *testing.T) {
 
 func TestParseCloudModels(t *testing.T) {
 	router := `{"data":[
-	{"id":"openai/gpt-4o","context_length":128000,"architecture":{"input_modalities":["text","image"]},"supported_parameters":["tools","temperature"]},
-	{"id":"meta-llama/llama-3.1-8b-instruct:free","context_length":131072,"architecture":{"input_modalities":["text"]},"supported_parameters":["temperature"]}
+		{"id":"openai/gpt-4o","context_length":128000,"architecture":{"input_modalities":["text","image"]},"supported_parameters":["tools","temperature"]},
+		{"id":"meta-llama/llama-3.1-8b-instruct:free","context_length":131072,"architecture":{"input_modalities":["text"]},"supported_parameters":["temperature"]}
 	]}`
 	models, err := parseCloudModels(backendOpenRouter, []byte(router))
 	if err != nil || len(models) != 2 {
@@ -852,5 +854,200 @@ func TestModelFilter(t *testing.T) {
 	m.moveCursor(1) // no visible models: must not crash or move
 	if m.cursor != 3 {
 		t.Errorf("cursor should stay put, got %d", m.cursor)
+	}
+}
+
+// --- QoL: new line key, console, usage, scrolling ---
+
+func TestIsNewlineKey(t *testing.T) {
+	for _, k := range []string{"alt+enter", "ctrl+j", "shift+enter"} {
+		if !isNewlineKey(k) {
+			t.Errorf("%q should add a new line", k)
+		}
+	}
+	for _, k := range []string{"enter", "tab", "a", ""} {
+		if isNewlineKey(k) {
+			t.Errorf("%q should not add a new line", k)
+		}
+	}
+}
+
+func TestParseConsole(t *testing.T) {
+	tests := []struct{ in, cmd, arg string }{
+		{":help", "help", ""},
+		{"help", "help", ""},
+		{"  :SWITCH gemma3:4b  ", "switch", "gemma3:4b"},
+		{":models   qwen", "models", "qwen"},
+		{":", "", ""},
+		{"", "", ""},
+	}
+	for _, tt := range tests {
+		cmd, arg := parseConsole(tt.in)
+		if cmd != tt.cmd || arg != tt.arg {
+			t.Errorf("parseConsole(%q) = (%q, %q), want (%q, %q)", tt.in, cmd, arg, tt.cmd, tt.arg)
+		}
+	}
+}
+
+func TestResolveModel(t *testing.T) {
+	models := []string{"llama3.2:1b", "gemma3:4b", "gemma3:270m", "qwen3-vl:2b"}
+	tests := []struct {
+		in      string
+		want    int
+		wantErr bool
+	}{
+		{"gemma3:4b", 1, false},   // exact
+		{"GEMMA3:270M", 2, false}, // exact, any case
+		{"qwen", 3, false},        // a part of the name, only one match
+		{"llama", 0, false},
+		{"gemma3", -1, true}, // two matches
+		{"mistral", -1, true},
+		{"", -1, true},
+	}
+	for _, tt := range tests {
+		got, err := resolveModel(tt.in, models)
+		if got != tt.want || (err != nil) != tt.wantErr {
+			t.Errorf("resolveModel(%q) = %d, %v; want %d (error: %v)", tt.in, got, err, tt.want, tt.wantErr)
+		}
+	}
+}
+
+func TestCapLines(t *testing.T) {
+	lines := []string{"a", "b", "c", "d", "e"}
+	if got := capLines(lines, 3); !reflect.DeepEqual(got, []string{"c", "d", "e"}) {
+		t.Errorf("got %v", got)
+	}
+	if got := capLines(lines, 10); !reflect.DeepEqual(got, lines) {
+		t.Errorf("short lists stay as they are, got %v", got)
+	}
+}
+
+func TestConsoleHelpListsTheCommands(t *testing.T) {
+	help := strings.Join(consoleHelp(), "\n")
+	for _, want := range []string{":status", ":tokens", ":models", ":show", ":ps", ":unload", ":switch", ":stop", ":kill", ":exit"} {
+		if !strings.Contains(help, want) {
+			t.Errorf("help does not mention %s", want)
+		}
+	}
+	if strings.Contains(help, ":llama") {
+		t.Error("the help should keep its secrets")
+	}
+}
+
+func TestKonamiStep(t *testing.T) {
+	seq := []string{"up", "up", "down", "down", "left", "right", "left", "right", "b", "a"}
+	progress := 0
+	for i, key := range seq {
+		var swallow, open bool
+		progress, swallow, open = konamiStep(progress, key)
+		if open {
+			t.Fatalf("opened too early at key %d", i)
+		}
+		// Only the two letters are kept out of the text fields.
+		if swallow != (key == "b" || key == "a") {
+			t.Errorf("key %q: swallow = %v", key, swallow)
+		}
+	}
+	if progress != len(seq) {
+		t.Fatalf("progress = %d, want %d", progress, len(seq))
+	}
+	if _, swallow, open := konamiStep(progress, "enter"); !open || !swallow {
+		t.Error("Enter after the full sequence should open it")
+	}
+
+	// A wrong key starts over, and normal typing never triggers anything.
+	if p, _, _ := konamiStep(5, "x"); p != 0 {
+		t.Errorf("a wrong key should reset, got %d", p)
+	}
+	if p, _, _ := konamiStep(5, "up"); p != 1 {
+		t.Errorf("up can start the sequence again, got %d", p)
+	}
+	if _, _, open := konamiStep(0, "enter"); open {
+		t.Error("Enter alone must not open anything")
+	}
+	if p, swallow, _ := konamiStep(0, "b"); p != 0 || swallow {
+		t.Error("typing b normally must stay untouched")
+	}
+}
+
+func TestStreamOpenAIUsage(t *testing.T) {
+	sse := "data: {\"choices\":[{\"delta\":{\"content\":\"Hi\"}}]}\n\n" +
+		"data: {\"choices\":[],\"usage\":{\"prompt_tokens\":10,\"completion_tokens\":5}}\n\n" +
+		"data: [DONE]\n\n"
+	got, err := collect(sse)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []OllamaGenerateRes{{Response: "Hi"}, {Usage: &UsageInfo{Prompt: 10, Completion: 5}}}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %+v, want %+v", got, want)
+	}
+}
+
+func TestAddUsage(t *testing.T) {
+	var m model
+	m.addUsage(UsageInfo{Prompt: 10, Completion: 5, TokensPerSec: 20})
+	m.addUsage(UsageInfo{Prompt: 30, Completion: 7})
+	if m.usagePrompt != 40 || m.usageCompletion != 12 || m.usageReplies != 2 || m.lastUsage.Prompt != 30 {
+		t.Errorf("unexpected totals: %+v", m)
+	}
+	lines := strings.Join(m.tokenLines(), "\n")
+	if !strings.Contains(lines, "40") || !strings.Contains(lines, "12") {
+		t.Errorf("the token overview should show the totals, got %q", lines)
+	}
+	if got := strings.Join((model{}).tokenLines(), "\n"); !strings.Contains(got, "No token counts yet") {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestStopGeneration(t *testing.T) {
+	cancelled := false
+	m := model{
+		isThinking:   true,
+		cancelStream: func() { cancelled = true },
+		streamChan:   make(chan OllamaGenerateRes),
+		messages:     []ChatMessage{{Role: "You", Content: "hi"}, {Role: "AI", Content: "partial"}},
+		genStart:     time.Now(),
+	}
+	if !m.stopGeneration() {
+		t.Fatal("there was a reply to stop")
+	}
+	last := m.messages[len(m.messages)-1]
+	if !cancelled || m.isThinking || m.streamChan != nil || !strings.HasSuffix(last.Content, "[Stopped by user]") || last.Elapsed == "" {
+		t.Errorf("unexpected state after stopping: cancelled=%v %+v", cancelled, m)
+	}
+	if m.stopGeneration() {
+		t.Error("a second stop has nothing to do")
+	}
+}
+
+func TestScrollingIsNotForcedDownWhileStreaming(t *testing.T) {
+	m := model{viewport: viewport.New(40, 5), focusMode: "list", autoScroll: true, selectedMsg: -1, snappedMsg: -1}
+	for i := 0; i < 20; i++ {
+		m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("line %d", i)})
+	}
+
+	// The last message (the one being generated) is selected and followed.
+	m.selectedMsg = len(m.messages) - 1
+	m.updateViewport()
+	if !m.viewport.AtBottom() {
+		t.Fatal("should follow the end while autoscroll is on")
+	}
+
+	// The user scrolls up; more text arrives. The view must stay where it is.
+	m.viewport.LineUp(4)
+	m.autoScroll = false
+	before := m.viewport.YOffset
+	m.messages[len(m.messages)-1].Content += " more text"
+	m.updateViewport()
+	if m.viewport.YOffset != before {
+		t.Errorf("the view was moved from %d to %d", before, m.viewport.YOffset)
+	}
+
+	// Moving the selection still brings the chosen message into view.
+	m.selectedMsg = 2
+	m.updateViewport()
+	if m.viewport.YOffset != 2 {
+		t.Errorf("YOffset = %d, want 2", m.viewport.YOffset)
 	}
 }
