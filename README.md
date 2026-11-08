@@ -81,7 +81,8 @@ Born out of a desire to ditch heavy Electron apps and web browsers, **Ollama-TUI
 
 * **Native & Fast:** Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lipgloss](https://github.com/charmbracelet/lipgloss). No web wrappers, no Electron, just pure terminal speed.
 * **Persistent Conversation Context:** The model remembers the whole conversation.
-* **Markdown Rendering:** Replies are rendered natively in the terminal.
+* **Markdown Rendering:** Replies, and your own messages, are rendered natively in the terminal (`**bold**`, `` `code` ``, lists, code blocks...).
+* **Multi-line messages:** `Alt+Enter` or `Ctrl+J` adds a new line, `Enter` sends.
 * **Cancelable Streams:** Stop the AI mid-generation with `Alt+S` if it starts yapping too much.
 * **Generation Timer:** A live "waiting for the model" counter while a model loads, and the total time shown under every reply.
 * **Thinking Viewer:** Press `Alt+T` to see the model's chain-of-thought (gray italic text) before the final response.
@@ -223,6 +224,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Ctrl + F | Chat | Upload attachments by writing a path or drag-and-dropping files |
 | Ctrl + L | Chat | List attached attachments and edit them |
 | Enter | Chat | Send message to AI |
+| Alt + Enter / Ctrl + J | Chat | Insert a new line in your message (Shift + Enter too, in terminals that report it) |
 | Alt + S | Any | Cancel the AI mid-generation |
 | Alt + T | Chat | Toggle the display of the model's thinking process |
 | Ctrl + T | Any | Toggle Thinking mode (if supported by the model) |
@@ -246,6 +248,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Enter | Select the model |
 | Ctrl + B | Cycle the backend: Ollama, OpenRouter, OpenAI |
 | Ctrl + K | Add or edit your API keys |
+| Ctrl + R | Reload the model list (starts local Ollama first if it is not running) |
 | / | Filter the list (Enter keeps the filter, Esc clears it) |
 | Ctrl + H | Change the Ollama host URL (local Ollama only) |
 | Ctrl + P | Pull a model from the Ollama library (local Ollama only) |
@@ -260,6 +263,31 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Enter | Next field (saves on the last one) |
 | Ctrl + S | Save (Settings and API keys) |
 | Esc | Cancel or go back (during a download it cancels and keeps what was already downloaded) |
+
+## 🧰 Console mode
+
+For details about your models and token usage, start the console:
+
+```bash
+ollama-tui --console
+```
+
+Type a command and press Enter (the leading `:` is optional, `Up`/`Down` recall earlier commands, `Esc` closes the console):
+
+| Command | What it does |
+| --- | --- |
+| `:help` | List the commands |
+| `:status` | Backend, server, model, abilities, context fill and chat size |
+| `:tokens` | Token usage of this run (as reported by the server), speed of the last reply and the context window |
+| `:models [text]` | List the models, optionally only those containing `text` |
+| `:show [model]` | Details about a model: family, size, quantization, context length, capabilities |
+| `:ps` | Models currently loaded in memory (Ollama) |
+| `:unload [model]` | Free a model from memory (Ollama), all loaded models by default |
+| `:switch <name>` | Switch to another model (a part of the name is enough) |
+| `:stop` | Stop the reply that is being generated |
+| `:kill` | Stop the Ollama server, if Ollama-TUI started it |
+| `:clear` | Clear the console |
+| `:exit` | Close the console |
 
 ## 💾 Where things are stored
 
@@ -289,7 +317,7 @@ The tests cover the parts that don't need a screen: message building, the calcul
 
 > The project is primarily developed and validated on Linux and FreeBSD. Other Unix-like platforms and Windows are expected to be compatible, but native support is not yet officially confirmed.
 
-## ⚠️ Known Limitations
+## Known Limitations
 
 - Tool calling depends on the selected model, and small models sometimes call tools badly.
 - The context meter is an estimate (about 4 characters per token). For Ollama it uses your context setting (4096 by default), for cloud models the model's own limit.
