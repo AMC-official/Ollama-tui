@@ -1051,3 +1051,327 @@ func TestScrollingIsNotForcedDownWhileStreaming(t *testing.T) {
 		t.Errorf("YOffset = %d, want 2", m.viewport.YOffset)
 	}
 }
+
+// --- console v2: system stats, :chat, saved logs, folders ---
+
+func TestParseMeminfo(t *testing.T) {
+	text := "MemTotal:        8000000 kB\nMemFree:          500000 kB\nMemAvailable:    3000000 kB\nSwapTotal:       2000000 kB\nSwapFree:        1500000 kB\n"
+	total, used, swapTotal, swapUsed := parseMeminfo(text)
+	if total != 8000000*1024 || used != 5000000*1024 || swapTotal != 2000000*1024 || swapUsed != 500000*1024 {
+		t.Errorf("got %d %d %d %d", total, used, swapTotal, swapUsed)
+	}
+
+	// Old kernels have no MemAvailable: free + buffers + cache count as available.
+	old := "MemTotal: 1000 kB\nMemFree: 100 kB\nBuffers: 50 kB\nCached: 150 kB\n"
+	total, used, _, _ = parseMeminfo(old)
+	if total != 1000*1024 || used != 700*1024 {
+		t.Errorf("fallback: got %d %d", total, used)
+	}
+}
+
+func TestParseProcStat(t *testing.T) {
+	got, ok := parseProcStat("cpu  100 0 50 800 50 0 0 0 0 0\ncpu0 1 2 3 4 5 6 7 8 9 10\n")
+	if !ok || got.total != 1000 || got.idle != 850 {
+		t.Errorf("got %+v, %v", got, ok)
+	}
+	if _, ok := parseProcStat("cpu a b c d e f\n"); ok {
+		t.Error("garbage should not parse")
+	}
+	if _, ok := parseProcStat("nothing here"); ok {
+		t.Error("no cpu line should not parse")
+	}
+}
+
+func TestParseCPTime(t *testing.T) {
+	got, ok := parseCPTime("100 0 50 10 840\n")
+	if !ok || got.total != 1000 || got.idle != 840 {
+		t.Errorf("got %+v, %v", got, ok)
+	}
+	if _, ok := parseCPTime("1 2 3"); ok {
+		t.Error("too few numbers should not parse")
+	}
+}
+
+func TestCPUPercent(t *testing.T) {
+	prev := cpuTimes{total: 1000, idle: 850}
+	tests := []struct {
+		cur  cpuTimes
+		want float64
+	}{
+		{cpuTimes{total: 2000, idle: 1350}, 50},
+		{cpuTimes{total: 2000, idle: 1850}, 0},
+		{cpuTimes{total: 2000, idle: 850}, 100},
+		{cpuTimes{total: 1000, idle: 850}, -1}, // no time has passed
+		{cpuTimes{total: 900, idle: 800}, -1},  // counters went backwards
+	}
+	for _, tt := range tests {
+		if got := cpuPercent(prev, tt.cur); math.Abs(got-tt.want) > 1e-9 {
+			t.Errorf("cpuPercent(%+v) = %v, want %v", tt.cur, got, tt.want)
+		}
+	}
+}
+
+func TestParseFreeBSDMemory(t *testing.T) {
+	total, used := parseFreeBSDMemory("8589934592\n4096\n100000\n200000\n")
+	if total != 8589934592 || used != 8589934592-300000*4096 {
+		t.Errorf("got %d %d", total, used)
+	}
+	if total, used := parseFreeBSDMemory("1 2"); total != 0 || used != 0 {
+		t.Errorf("too little data should give zeros, got %d %d", total, used)
+	}
+}
+
+func TestParseSwapinfo(t *testing.T) {
+	one := "Device          1K-blocks     Used    Avail Capacity\n/dev/ada0p3       8388608     1024  8387584     0%\n"
+	if total, used := parseSwapinfo(one); total != 8388608*1024 || used != 1024*1024 {
+		t.Errorf("one device: got %d %d", total, used)
+	}
+	two := "Device          1K-blocks     Used    Avail Capacity\n/dev/ada0p3 1000 100 900 10%\n/dev/ada1p3 1000 200 800 20%\nTotal 2000 300 1700 15%\n"
+	if total, used := parseSwapinfo(two); total != 2000*1024 || used != 300*1024 {
+		t.Errorf("two devices: got %d %d", total, used)
+	}
+	if total, used := parseSwapinfo(""); total != 0 || used != 0 {
+		t.Errorf("no swap: got %d %d", total, used)
+	}
+}
+
+func TestParseNvidiaSmi(t *testing.T) {
+	gpus := parseNvidiaSmi("NVIDIA GeForce RTX 3060, 45, 3100, 12288\n\nNVIDIA Tesla, [N/A], 10, 20\n")
+	if len(gpus) != 2 {
+		t.Fatalf("got %d gpus: %+v", len(gpus), gpus)
+	}
+	if gpus[0].Name != "NVIDIA GeForce RTX 3060" || gpus[0].Util != 45 || gpus[0].MemUsed != 3100<<20 || gpus[0].MemTotal != 12288<<20 {
+		t.Errorf("first gpu: %+v", gpus[0])
+	}
+	if gpus[1].Util != -1 {
+		t.Errorf("an unknown utilization should be -1, got %v", gpus[1].Util)
+	}
+	if got := parseNvidiaSmi("garbage"); len(got) != 0 {
+		t.Errorf("got %+v", got)
+	}
+}
+
+func TestTextBar(t *testing.T) {
+	if got := textBar(0.5, 10); strings.Count(got, "█") != 5 || strings.Count(got, "░") != 5 {
+		t.Errorf("got %q", got)
+	}
+	if got := textBar(0, 4); got != "░░░░" {
+		t.Errorf("got %q", got)
+	}
+	if got := textBar(7, 4); got != "████" {
+		t.Errorf("above 1 should clamp, got %q", got)
+	}
+}
+
+func TestSystemStatsReport(t *testing.T) {
+	s := SystemStats{
+		CPU: 50, Cores: 4,
+		MemTotal: 8 << 30, MemUsed: 4 << 30,
+		SwapTotal: 2 << 30, SwapUsed: 1 << 30,
+		GPUs: []GPUStat{{Name: "Test GPU", Util: 30, MemUsed: 1 << 30, MemTotal: 4 << 30}},
+	}
+	report := strings.Join(s.Lines(10), "\n")
+	for _, want := range []string{"CPU", "RAM", "Swap", "GPU", "VRAM", "Test GPU", "50%", "4 cores"} {
+		if !strings.Contains(report, want) {
+			t.Errorf("the report should mention %q:\n%s", want, report)
+		}
+	}
+
+	bare := strings.Join((SystemStats{CPU: -1}).Lines(10), "\n")
+	for _, want := range []string{"CPU   not available", "not detected", "Swap  none"} {
+		if !strings.Contains(bare, want) {
+			t.Errorf("the bare report should mention %q:\n%s", want, bare)
+		}
+	}
+
+	inline := s.Inline()
+	if !strings.Contains(inline, "CPU 50%") || !strings.Contains(inline, "RAM 50%") || !strings.Contains(inline, "GPU 30%") {
+		t.Errorf("unexpected inline text %q", inline)
+	}
+}
+
+func TestToggleStats(t *testing.T) {
+	var m model
+	if cmd := m.toggleStats(); !m.showStats || m.statsGen != 1 || cmd == nil {
+		t.Errorf("switching on should start a reading: %+v", m.statsGen)
+	}
+	m.haveStats = true
+	if cmd := m.toggleStats(); m.showStats || m.statsGen != 2 || m.haveStats || cmd != nil {
+		t.Error("switching off should stop everything and forget the numbers")
+	}
+}
+
+func TestSanitizeFileName(t *testing.T) {
+	tests := map[string]string{
+		"My Test!":         "My_Test_",
+		"../../etc/passwd": "_.._etc_passwd",
+		"run-1_final.json": "run-1_final.json",
+		"":                 "",
+		"   ":              "",
+	}
+	for in, want := range tests {
+		if got := sanitizeFileName(in); got != want {
+			t.Errorf("sanitizeFileName(%q) = %q, want %q", in, got, want)
+		}
+	}
+	if got := sanitizeFileName(strings.Repeat("a", 100)); len(got) != 60 {
+		t.Errorf("long names are cut to 60 characters, got %d", len(got))
+	}
+}
+
+func TestRecentFiles(t *testing.T) {
+	dir := t.TempDir()
+	for _, name := range []string{"a.json", "b.json", "c.json", "notes.txt"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("{}"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := recentFiles(dir, 2); !reflect.DeepEqual(got, []string{"c.json", "b.json"}) {
+		t.Errorf("got %v", got)
+	}
+	if got := recentFiles(filepath.Join(dir, "missing"), 5); len(got) != 0 {
+		t.Errorf("a missing folder has no files, got %v", got)
+	}
+}
+
+func TestDataFoldersAndMigration(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("the home folder is not taken from $HOME on Windows")
+	}
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	if filepath.Base(historyDir()) != "chats" || filepath.Base(consoleLogDir()) != "console" || filepath.Dir(historyDir()) != dataDir() {
+		t.Errorf("unexpected folders: %s, %s, %s", dataDir(), historyDir(), consoleLogDir())
+	}
+
+	// A chat saved by an older version lies straight in the data folder.
+	if err := os.MkdirAll(dataDir(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	old := filepath.Join(dataDir(), "chat_20260101_000000.json")
+	if err := os.WriteFile(old, []byte("[]"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	migrateLegacyChats()
+	if _, err := os.Stat(old); err == nil {
+		t.Error("the old file should have been moved")
+	}
+	if _, err := os.Stat(filepath.Join(historyDir(), "chat_20260101_000000.json")); err != nil {
+		t.Errorf("the chat should be in the chats folder: %v", err)
+	}
+}
+
+func TestConsoleSave(t *testing.T) {
+	if os.PathSeparator == '\\' {
+		t.Skip("the home folder is not taken from $HOME on Windows")
+	}
+	t.Setenv("HOME", t.TempDir())
+
+	m := model{backend: backendOpenRouter}
+	m.addUsage(UsageInfo{Prompt: 10, Completion: 5})
+	m.consolePrint("hello console")
+	m.consoleSave("My Test")
+
+	data, err := os.ReadFile(filepath.Join(consoleLogDir(), "My_Test.json"))
+	if err != nil {
+		t.Fatalf("the log should be saved: %v", err)
+	}
+	var log consoleLogFile
+	if err := json.Unmarshal(data, &log); err != nil {
+		t.Fatal(err)
+	}
+	if log.SavedAt == "" || log.Backend != "OpenRouter" || log.Usage.PromptTokens != 10 || log.Usage.GeneratedTokens != 5 {
+		t.Errorf("unexpected log header: %+v", log)
+	}
+	if len(log.Lines) == 0 || log.Lines[0] != "hello console" {
+		t.Errorf("the lines should be saved: %v", log.Lines)
+	}
+	if last := m.consoleLines[len(m.consoleLines)-1]; !strings.Contains(last, "Saved") {
+		t.Errorf("the console should say where it saved: %q", last)
+	}
+
+	m.consoleSave("") // without a name it picks one
+	if got := recentFiles(consoleLogDir(), 5); len(got) != 2 {
+		t.Errorf("expected two logs, got %v", got)
+	}
+}
+
+func TestConsoleChatRefusals(t *testing.T) {
+	last := func(m model) string { return m.consoleLines[len(m.consoleLines)-1] }
+
+	m := model{}
+	if cmd := m.consoleChat("   "); cmd != nil || !strings.Contains(last(m), "usage") {
+		t.Errorf("an empty prompt should show the usage, got %q", last(m))
+	}
+	m = model{}
+	if cmd := m.consoleChat("hi"); cmd != nil || !strings.Contains(last(m), "No model selected") {
+		t.Errorf("without models: %q", last(m))
+	}
+	m = model{models: []string{"a"}, isThinking: true}
+	if cmd := m.consoleChat("hi"); cmd != nil || !strings.Contains(last(m), ":stop") {
+		t.Errorf("while chatting: %q", last(m))
+	}
+	t.Setenv("OPENAI_API_KEY", "") // so the test does not depend on your environment
+	m = model{models: []string{"a"}, backend: backendOpenAI}
+	if cmd := m.consoleChat("hi"); cmd != nil || !strings.Contains(last(m), "API key") {
+		t.Errorf("a cloud model needs a key: %q", last(m))
+	}
+}
+
+func TestFinishConsoleChat(t *testing.T) {
+	m := model{
+		backend:  backendOllama,
+		models:   []string{"gemma3:4b"},
+		ccChan:   make(chan OllamaGenerateRes),
+		ccText:   "hello\nworld",
+		ccPrompt: "hi",
+		ccStart:  time.Now().Add(-2 * time.Second),
+		ccFirst:  time.Now().Add(-time.Second),
+		ccUsage:  &UsageInfo{Prompt: 12, Completion: 5, TokensPerSec: 25},
+	}
+	m.finishConsoleChat()
+	out := strings.Join(m.consoleLines, "\n")
+	for _, want := range []string{"hello", "world", "prompt tokens:     12", "generated tokens:  5", "25.0 tokens/s", "gemma3:4b", "first token after", "total time"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("the result should contain %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "~") {
+		t.Errorf("real counts must not be marked as estimates:\n%s", out)
+	}
+	if m.ccChan != nil || m.usagePrompt != 12 || m.usageCompletion != 5 {
+		t.Errorf("the :chat state should be cleared and the usage counted: %+v", m.lastUsage)
+	}
+
+	// Without counts from the server the numbers are estimates.
+	e := model{ccChan: make(chan OllamaGenerateRes), ccText: "abcdefgh", ccPrompt: "abcd", ccStart: time.Now()}
+	e.finishConsoleChat()
+	est := strings.Join(e.consoleLines, "\n")
+	if !strings.Contains(est, "generated tokens:  ~2") || !strings.Contains(est, "prompt tokens:     ~1") {
+		t.Errorf("estimates should be marked with ~:\n%s", est)
+	}
+}
+
+func TestCancelConsoleChat(t *testing.T) {
+	called := false
+	m := model{ccChan: make(chan OllamaGenerateRes), ccCancel: func() { called = true }}
+	if !m.cancelConsoleChat() || !called || m.ccChan != nil {
+		t.Error("the running :chat should be cancelled")
+	}
+	if m.cancelConsoleChat() {
+		t.Error("a second cancel has nothing to do")
+	}
+}
+
+func TestConsoleHelpMentionsNewCommands(t *testing.T) {
+	help := strings.Join(consoleHelp(), "\n")
+	for _, want := range []string{":start", ":chat", ":top", ":save", ":logs"} {
+		if !strings.Contains(help, want) {
+			t.Errorf("help does not mention %s", want)
+		}
+	}
+	if strings.Contains(help, ":llama") {
+		t.Error("the help should keep its secrets")
+	}
+}
