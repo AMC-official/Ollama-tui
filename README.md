@@ -239,6 +239,9 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
 | Ctrl + C | Any | Exit app (offers to stop the Ollama server if Ollama-TUI started it) |
+| Ctrl + G | Any | Open or close the console |
+| : | List, Model selection | Open the console |
+| Alt + H | Chat | Show or hide CPU / RAM / GPU percentages in the header |
 
 ### Model selection screen
 
@@ -266,33 +269,45 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 
 ## 🧰 Console mode
 
-For details about your models and token usage, start the console:
+For details about your models, token usage and your machine's load, open the console. Start it with:
 
 ```bash
 ollama-tui --console
 ```
 
-Type a command and press Enter (the leading `:` is optional, `Up`/`Down` recall earlier commands, `Esc` closes the console):
+or press **`:`** on the model screen (or in List Mode) or **`Ctrl+G`** anywhere, including the Settings screen. `Esc` (or `Ctrl+G` again) closes it and takes you back to where you were.
+
+Type a command and press Enter (the leading `:` is optional, `Up`/`Down` recall earlier commands, `PgUp`/`PgDn` scroll):
 
 | Command | What it does |
 | --- | --- |
 | `:help` | List the commands |
 | `:status` | Backend, server, model, abilities, context fill and chat size |
+| `:chat <prompt>` | Ask the current model one question (separate from your chat) and see how many tokens went in and out, the speed in tokens per second, the time to the first token and the total time |
 | `:tokens` | Token usage of this run (as reported by the server), speed of the last reply and the context window |
+| `:top` | CPU, RAM, swap and GPU usage right now, with bars (CPU, RAM and swap on Linux and FreeBSD; GPU through `nvidia-smi` for NVIDIA or sysfs for AMD) |
 | `:models [text]` | List the models, optionally only those containing `text` |
 | `:show [model]` | Details about a model: family, size, quantization, context length, capabilities |
 | `:ps` | Models currently loaded in memory (Ollama) |
 | `:unload [model]` | Free a model from memory (Ollama), all loaded models by default |
 | `:switch <name>` | Switch to another model (a part of the name is enough) |
+| `:start` | Start the local Ollama server |
 | `:stop` | Stop the reply that is being generated |
 | `:kill` | Stop the Ollama server, if Ollama-TUI started it |
+| `:save [name]` | Save this console log as a `.json` file |
+| `:logs` | Show where chats and console logs are saved, and the latest files |
 | `:clear` | Clear the console |
 | `:exit` | Close the console |
+
+### 📊 Live load in the header
+
+Press **`Alt+H`** in Chat Mode to show or hide the CPU, RAM, swap (only when it is in use) and GPU percentages in the header. They update every two seconds and turn yellow and red as the load grows. While they are hidden, nothing is read and no timer runs.
 
 ## 💾 Where things are stored
 
 * **Settings and keys:** `config.json` in your user config folder (`~/.config/ollama-tui/` on Linux).
-* **Saved chats:** `~/.local/share/ollama-tui/`.
+* **Saved chats:** `~/.local/share/ollama-tui/chats/` (chats saved by older versions are moved there automatically).
+* **Saved console logs:** `~/.local/share/ollama-tui/console/`, as `.json` files with the log lines, the model and the token totals.
 
 ## 🧪 Development & Tests
 
