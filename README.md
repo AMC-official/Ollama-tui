@@ -109,6 +109,7 @@ File tools never show hidden files or folders (like `.env` or `.ssh`), refuse pa
 * **Text Attachment Support:** Attach files by entering their path, including text-based PDFs (not scanned images), `.txt`, `.docx`, `.odt`, and `.abw` documents and script files such as `.py` or `.sh`.
 * **Vision Support:** Attach images (`.png`, `.jpg`, `.jpeg`, `.webp`) alongside text files.
 * **Attachment Manager:** List, replace, delete, or edit attachments (`Ctrl+L`).
+* **Image viewer:** Press `Shift+V` in the Attachment Manager or in List Mode (or use `:view` in the console) to look at a picture. Terminals that can draw images (**kitty, Ghostty, WezTerm, iTerm2**) show it right in the terminal until you press Enter. Everywhere else it opens in your system's default image viewer (`xdg-open`, `open`, `termux-open`, ...). See [Image viewer](#️-image-viewer).
 
 ### 🎛️ Customization
 
@@ -238,6 +239,7 @@ Ollama-TUI uses a modal interface. You are either in Chat Mode (typing) or List 
 | Shift + J | List | Save current chat to `.json` |
 | Shift + B | List | Branch the chat from the selected message |
 | Ctrl + O | List | Open the Chat History browser |
+| Shift + V | List, Attachment Manager | View the selected image (or the newest one of the chat) |
 | Ctrl + C | Any | Exit app (offers to stop the Ollama server if Ollama-TUI started it) |
 | Ctrl + G | Any | Open or close the console |
 | : | List, Model selection | Open the console |
@@ -283,9 +285,19 @@ Type a command and press Enter (the leading `:` is optional, `Up`/`Down` recall 
 | --- | --- |
 | `:help` | List the commands |
 | `:status` | Backend, server, model, abilities, context fill and chat size |
-| `:chat <prompt>` | Ask the current model one question (separate from your chat) and see how many tokens went in and out, the speed in tokens per second, the time to the first token and the total time |
+| `:chat <prompt>` | Ask the current model one question (separate from your chat). Shows what was sent, the reply **token by token** (yellow, green, yellow, green...), how many tokens went in and out, the speed in tokens per second, the time to the first token and the total time |
+| `:chat` | Without a prompt: the **whole chat as the model receives it** (system prompt, every message, attached file text, tool calls and results), each message with its size in tokens and the text coloured token by token, plus the total and the biggest consumers |
+| `:dump [full]` | Same as `:chat` without a prompt. Long messages are cut after 40 lines; `:dump full` shows everything |
+| `:ctx` | Only the sizes: what fills the context window, message by message |
+| `:colors [on\|off]` | Turn the yellow/green token colours on or off |
 | `:tokens` | Token usage of this run (as reported by the server), speed of the last reply and the context window |
 | `:top` | CPU, RAM, swap and GPU usage right now, with bars (CPU, RAM and swap on Linux and FreeBSD; GPU through `nvidia-smi` for NVIDIA or sysfs for AMD) |
+| `:images` | List the pictures of this chat |
+| `:view [n\|path]` | Show a picture: by number (see `:images`), by file path, or the newest one |
+| `:copy` | Copy the last AI reply to the clipboard |
+| `:export [name]` | Save the chat as a Markdown file in `~/.local/share/ollama-tui/exports/` |
+| `:set [key value]` | Show or change `temp`, `top_p`, `top_k` or `ctx` (`default` clears one). Saved like the Settings screen, with the same limits |
+| `:system [text]` | Show, set or clear (`:system clear`) the system prompt |
 | `:models [text]` | List the models, optionally only those containing `text` |
 | `:show [model]` | Details about a model: family, size, quantization, context length, capabilities |
 | `:ps` | Models currently loaded in memory (Ollama) |
@@ -298,6 +310,25 @@ Type a command and press Enter (the leading `:` is optional, `Up`/`Down` recall 
 | `:logs` | Show where chats and console logs are saved, and the latest files |
 | `:clear` | Clear the console |
 | `:exit` | Close the console |
+
+### 🎨 About the token colours
+
+Every model has its own tokenizer and Ollama-TUI has none, so the colours come in two kinds:
+
+* **The reply** of a `:chat <prompt>`: one streamed chunk is (almost always) one token, so these boundaries are real.
+* **Text that was only sent** (system prompt, your messages, attached files): cut with a rough imitation of a BPE tokenizer. The sizes are estimates, close for English text. When the server reported a count for the last reply, `:chat` shows it next to the estimate.
+
+Images are not counted: each one costs the model extra tokens. Saved console logs (`:save`) never contain colour codes.
+
+### 🖼️ Image viewer
+
+| Terminal | What happens |
+| --- | --- |
+| kitty, Ghostty | Drawn inline (kitty graphics protocol) |
+| WezTerm, iTerm2, mintty | Drawn inline (iTerm2 image protocol) |
+| anything else, tmux, screen | Opened in the default viewer: `xdg-open` / `gio open` (Linux, FreeBSD), `open` (macOS), `termux-open` (Termux), `wslview` (WSL), `start` (Windows) |
+
+Pictures are shrunk to at most 1800 pixels before they are sent to the terminal. WebP is drawn inline by WezTerm and iTerm2; in kitty and Ghostty it opens in the default viewer unless you build with `go get golang.org/x/image/webp && go build -tags webp`. On FreeBSD install `xdg-utils` for the default viewer. Set `OLLAMA_TUI_IMAGE=kitty`, `iterm` or `off` to override the detection (for example over SSH, or inside tmux with passthrough enabled).
 
 ### 📊 Live load in the header
 
@@ -315,7 +346,7 @@ Press **`Alt+H`** in Chat Mode to show or hide the CPU, RAM, swap (only when it 
 go test -v .
 ```
 
-The tests cover the parts that don't need a screen: message building, the calculator and file-tool safety checks, the OpenAI/OpenRouter stream parser, model list parsing and the formatting helpers. Please run them before opening a pull request.
+The tests cover the parts that don't need a screen: the token splitter and the conversation dump, the image viewer's protocol detection and escape codes, message building, the calculator and file-tool safety checks, the OpenAI/OpenRouter stream parser, model list parsing and the formatting helpers. Please run them before opening a pull request.
 
 ## 🖥️ Platform Support
 
@@ -340,6 +371,7 @@ The tests cover the parts that don't need a screen: message building, the calcul
 - On cloud backends the Thinking toggle only controls whether reasoning text is shown. OpenAI's reasoning models also reject a custom temperature, so leave that field empty for them.
 - Custom OpenAI-compatible endpoints (like LM Studio or `llama-server`) can't be configured yet.
 - Pulling, deleting and changing the host only work for local Ollama.
+- Token colorizing is still a bit experimental so it might act up a bit (or a lot)
 
 ## 🛠️ Built With
 
