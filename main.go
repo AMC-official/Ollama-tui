@@ -59,11 +59,11 @@ type OllamaTags struct {
 // FIXED: we now talk to /api/chat (which takes the whole conversation) instead
 // of /api/generate (which only ever saw the latest prompt).
 type OllamaChatMsg struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content"`
-	Images     []string   `json:"images,omitempty"`
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"` // set on an assistant message that asks for tools
-	ToolName   string     `json:"tool_name,omitempty"`  // set on a "tool" message: which tool answered
+	Role    string   `json:"role"`
+	Content string   `json:"content"`
+	Images  []string `json:"images,omitempty"`
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"` // set on an assistant message that asks for tools
+	ToolName  string     `json:"tool_name,omitempty"`  // set on a "tool" message: which tool answered
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 }
 type OllamaChatReq struct {
@@ -72,21 +72,21 @@ type OllamaChatReq struct {
 	Stream   bool                   `json:"stream"`
 	Think    *bool                  `json:"think,omitempty"`
 	Options  map[string]interface{} `json:"options,omitempty"`
-	Tools    []ToolDef              `json:"tools,omitempty"`
+	Tools    []ToolDef `json:"tools,omitempty"`
 }
 
 // One streamed line of an /api/chat response.
 type OllamaChatRes struct {
 	Message struct {
-		Content   string     `json:"content"`
-		Thinking  string     `json:"thinking,omitempty"`
+		Content  string `json:"content"`
+		Thinking string `json:"thinking,omitempty"`
 		ToolCalls []ToolCall `json:"tool_calls,omitempty"`
 	} `json:"message"`
-	Error           string `json:"error,omitempty"`
-	Done            bool   `json:"done"`
-	PromptEvalCount int    `json:"prompt_eval_count,omitempty"`
-	EvalCount       int    `json:"eval_count,omitempty"`
-	EvalDuration    int64  `json:"eval_duration,omitempty"` // nanoseconds
+	Error string `json:"error,omitempty"`
+	Done  bool   `json:"done"`
+	PromptEvalCount int   `json:"prompt_eval_count,omitempty"`
+	EvalCount       int   `json:"eval_count,omitempty"`
+	EvalDuration    int64 `json:"eval_duration,omitempty"` // nanoseconds
 }
 
 // What the streaming goroutine hands over to the UI.
@@ -134,24 +134,24 @@ type OllamaShowRes struct {
 
 // --- Config & App Models ---
 type Config struct {
-	SystemPrompt  string   `json:"system_prompt"`
-	Temperature   *float64 `json:"temperature,omitempty"` // nil = model default
-	TopP          *float64 `json:"top_p,omitempty"`
-	TopK          *int     `json:"top_k,omitempty"`
-	NumCtx        int      `json:"num_ctx,omitempty"`        // 0 = Ollama default
+	SystemPrompt string   `json:"system_prompt"`
+	Temperature  *float64 `json:"temperature,omitempty"` // nil = model default
+	TopP         *float64 `json:"top_p,omitempty"`
+	TopK         *int     `json:"top_k,omitempty"`
+	NumCtx       int      `json:"num_ctx,omitempty"` // 0 = Ollama default
 	Backend       string   `json:"backend,omitempty"`        // "ollama" (default), "openrouter" or "openai"
 	OpenRouterKey string   `json:"openrouter_key,omitempty"` // plain text; the config file is only readable by you
 	OpenAIKey     string   `json:"openai_key,omitempty"`
 }
 
 type ChatMessage struct {
-	Role       string     `json:"role"`
-	Content    string     `json:"content"`
-	Thinking   string     `json:"thinking,omitempty"`
-	Context    string     `json:"context,omitempty"`    // text of files attached to this user message
-	Elapsed    string     `json:"elapsed,omitempty"`    // how long an AI reply took (shown under it)
-	ToolCalls  []ToolCall `json:"tool_calls,omitempty"` // tools the AI asked for in this message
-	ToolName   string     `json:"tool_name,omitempty"`  // for "Tool" messages: which tool produced the result
+	Role     string `json:"role"`
+	Content  string `json:"content"`
+	Thinking string `json:"thinking,omitempty"`
+	Context  string `json:"context,omitempty"` // text of files attached to this user message
+	Elapsed  string `json:"elapsed,omitempty"` // how long an AI reply took (shown under it)
+	ToolCalls []ToolCall `json:"tool_calls,omitempty"` // tools the AI asked for in this message
+	ToolName  string     `json:"tool_name,omitempty"`  // for "Tool" messages: which tool produced the result
 	ToolCallID string     `json:"tool_call_id,omitempty"`
 }
 
@@ -189,7 +189,6 @@ const (
 	pullConfirm                      // found: waiting for y/n
 	pullDownloading                  // downloading, showing the progress bar
 )
-
 // --- UI Styles ---
 var (
 	colorPurple = lipgloss.Color("135")
@@ -250,14 +249,14 @@ type model struct {
 	streamChan       chan OllamaGenerateRes
 	cancelStream     context.CancelFunc
 	isThinking       bool
-	genStart         time.Time  // when the current reply was requested
-	gotOutput        bool       // true once the model has sent any text
+	genStart         time.Time // when the current reply was requested
+	gotOutput        bool      // true once the model has sent any text
 	pendingCalls     []ToolCall // tools the model asked for during the current reply
 	toolRounds       int        // tool rounds used by the current answer
 	autoScroll       bool
 	isSwitchingModel bool
-	deleteTarget     string            // model waiting for a y/n delete confirmation
-	selectAfterFetch string            // highlight this model after the next model-list refresh
+	deleteTarget     string // model waiting for a y/n delete confirmation
+	selectAfterFetch string // highlight this model after the next model-list refresh
 	pullInputs       [2]textarea.Model // model name, parameters/tag
 	pullFocus        int
 	pullStep         pullPhase
@@ -279,9 +278,9 @@ type model struct {
 	keyInputs        [2]textinput.Model // OpenRouter key, OpenAI key (masked)
 	keyFocus         int
 	listError        string // why the model list is empty, if loading it failed
-	dirty            bool   // streamed text waits for the next render tick
-	snappedMsg       int    // the selected message we last scrolled into view
-	console          bool   // the console overlay is open
+	dirty            bool // streamed text waits for the next render tick
+	snappedMsg       int  // the selected message we last scrolled into view
+	console          bool // the console overlay is open
 	consoleVP        viewport.Model
 	consoleIn        textinput.Model
 	consoleLines     []string
@@ -300,6 +299,9 @@ type model struct {
 	ccStart          time.Time
 	ccFirst          time.Time
 	ccUsage          *UsageInfo
+	ccTokens         []string   // the streamed chunks of the :chat reply, one per token (tokenize.go)
+	plainTokens      bool       // :colors off: no yellow/green token colours
+	seenImages       []imageRef // where the pictures sent in this run came from (imageview_ui.go)
 	showStats        bool // CPU / RAM / GPU percentages in the header (Alt+H)
 	statsGen         int  // identifies the running stats ticker
 	haveStats        bool
@@ -452,7 +454,6 @@ type streamDoneMsg struct{ ch chan OllamaGenerateRes }
 
 // tickMsg arrives once a second while a reply is being generated.
 type tickMsg struct{ ch chan OllamaGenerateRes }
-
 // pullEvent is one progress update from a model download.
 type pullEvent struct {
 	Status    string
@@ -992,7 +993,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.state = stateAttachmentList
 		m.statusMsg = fmt.Sprintf("Attached: %s", msg.attachment.Name)
-		cmds = append(cmds, clearStatusCmd(5*time.Second))
+		cmds = append(cmds, clearStatusCmd(5 * time.Second))
 
 	case fileEditedMsg:
 		if msg.index >= 0 && msg.index < len(m.attachments) {
@@ -1187,6 +1188,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ccFirst = time.Now()
 		}
 		m.ccText += msg.Response
+		if msg.Response != "" {
+			m.ccTokens = append(m.ccTokens, msg.Response)
+		}
 		m.ccThinking += msg.Thinking
 		if msg.Usage != nil {
 			m.ccUsage = msg.Usage
@@ -1198,6 +1202,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.ccChan != nil && msg.ch == m.ccChan {
 			m.finishConsoleChat()
 		}
+
+	case imageReadyMsg, imageFallbackMsg, imageDoneMsg:
+		cmds = append(cmds, m.onImageMsg(msg))
 
 	case consoleStartedMsg:
 		if msg.cmd != nil && m.ollamaCmd == nil {
@@ -1259,7 +1266,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.cloudInfo = nil
 		m.listError = msg.err.Error()
 		m.state = stateSelectModel // Go back to model selection so they can fix the host
-		cmds = append(cmds, clearStatusCmd(5*time.Second))
+		cmds = append(cmds, clearStatusCmd(5 * time.Second))
 		return m, tea.Batch(cmds...)
 
 	case tea.KeyMsg:
@@ -1385,13 +1392,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.attachCursor--
 					}
 					m.statusMsg = "Attachment deleted."
-					cmds = append(cmds, clearStatusCmd(5*time.Second))
+					cmds = append(cmds, clearStatusCmd(5 * time.Second))
 				}
 			case "S":
 				if len(m.attachments) > 0 {
 					m.swapIndex = m.attachCursor
 					m.state = stateFileAttach
 					m.fileInput.Focus()
+				}
+			case "V":
+				if len(m.attachments) > 0 {
+					a := m.attachments[m.attachCursor]
+					if a.IsImage {
+						cmds = append(cmds, m.viewImage(imageRef{Name: a.Name, Path: a.Path}))
+					} else {
+						m.statusMsg = "Only images can be viewed."
+						m.statusIsError = true
+						cmds = append(cmds, clearStatusCmd(5*time.Second))
+					}
 				}
 			case "N":
 				if len(m.attachments) > 0 {
@@ -1786,11 +1804,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.supportsThinking {
 					m.useThinking = !m.useThinking
 					m.statusMsg = fmt.Sprintf("Thinking: %v", m.useThinking)
-					cmds = append(cmds, clearStatusCmd(3*time.Second))
+					cmds = append(cmds, clearStatusCmd(3 * time.Second))
 				} else {
 					m.statusMsg = "Sorry, this model does not support Thinking."
 					m.statusIsError = true
-					cmds = append(cmds, clearStatusCmd(5*time.Second))
+					cmds = append(cmds, clearStatusCmd(5 * time.Second))
 				}
 				return m, tea.Batch(cmds...)
 			}
@@ -1798,11 +1816,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.supportsTools {
 					m.useTools = !m.useTools
 					m.statusMsg = fmt.Sprintf("Tools: %v", m.useTools)
-					cmds = append(cmds, clearStatusCmd(3*time.Second))
+					cmds = append(cmds, clearStatusCmd(3 * time.Second))
 				} else {
 					m.statusMsg = "Sorry, this model does not support Tools."
 					m.statusIsError = true
-					cmds = append(cmds, clearStatusCmd(5*time.Second))
+					cmds = append(cmds, clearStatusCmd(5 * time.Second))
 				}
 				return m, tea.Batch(cmds...)
 			}
@@ -1810,7 +1828,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.String() == "alt+t" {
 				m.showThinking = !m.showThinking
 				m.statusMsg = fmt.Sprintf("Show Thinking: %v", m.showThinking)
-				cmds = append(cmds, clearStatusCmd(3*time.Second))
+				cmds = append(cmds, clearStatusCmd(3 * time.Second))
 				m.updateViewport()
 				return m, tea.Batch(cmds...)
 			}
@@ -1846,6 +1864,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.statusMsg = "Copied to clipboard!"
 							m.statusIsError = false
 						}
+						cmds = append(cmds, clearStatusCmd(5*time.Second))
+					}
+				case "V":
+					if ref, ok := m.imageForMessage(m.selectedMsg); ok {
+						cmds = append(cmds, m.viewImage(ref))
+					} else {
+						m.statusMsg = "No images in this chat."
+						m.statusIsError = true
 						cmds = append(cmds, clearStatusCmd(5*time.Second))
 					}
 				// FIXED: N / S / B / Ctrl+O change the conversation, so they are blocked while
@@ -1969,7 +1995,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.messages = append(m.messages, ChatMessage{Role: "You", Content: userPrompt, Context: ctxText})
 					for _, a := range m.attachments {
 						if a.IsImage {
-							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("🖼️ Image: %s", a.Name)})
+							m.messages = append(m.messages, ChatMessage{Role: "System", Content: imageNotePrefix + a.Name})
 						} else {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: fmt.Sprintf("📎 Attached: %s", a.Name)})
 						}
@@ -1979,6 +2005,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Built here (on the UI goroutine) so the streaming goroutine never
 					// touches m.messages while it is being updated.
 					m.textarea.Reset()
+					m.rememberImages(m.attachments) // so the picture can be shown again later
 					m.attachments = nil
 
 					// Everything the model should see is built inside beginReply.
@@ -2018,6 +2045,7 @@ func (m model) statusLine() string {
 	return lipgloss.NewStyle().Foreground(color).Render(m.statusMsg)
 }
 
+
 // ollamaStartedMsg is the result of startOllama.
 type ollamaStartedMsg struct {
 	cmd     *exec.Cmd // the server we started (nil if one was already running)
@@ -2045,6 +2073,7 @@ func startOllama(host string) tea.Cmd {
 		return ollamaStartedMsg{cmd: cmd}
 	}
 }
+
 
 // pageStyle frames the full-screen views. FIXED: it now has a width, so long
 // help lines wrap at the window edge instead of running off-screen.
@@ -2315,7 +2344,7 @@ func (m model) View() string {
 			title += "No files attached.\nPress Esc to return."
 		} else {
 			title += m.renderScrollableList(items, m.attachCursor, m.height-8)
-			title += "\n↑/↓ Select • Shift+X Delete • Shift+S Replace • Shift+N Edit in Nano • Esc/Ctrl+S Save & Return"
+			title += "\n↑/↓ Select • Shift+X Delete • Shift+S Replace • Shift+N Edit in Nano • Shift+V View image • Esc/Ctrl+S Save & Return"
 		}
 		if sl := m.statusLine(); sl != "" {
 			title += "\n\n" + sl

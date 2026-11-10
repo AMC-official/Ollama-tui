@@ -75,10 +75,10 @@ func (m *model) runPendingTools() tea.Cmd {
 	}
 	for _, c := range calls {
 		m.messages = append(m.messages, ChatMessage{
-			Role:       "Tool",
-			ToolName:   c.Function.Name,
+			Role:     "Tool",
+			ToolName: c.Function.Name,
 			ToolCallID: c.ID,
-			Content:    runTool(c.Function.Name, c.Function.Arguments),
+			Content:  runTool(c.Function.Name, c.Function.Arguments),
 		})
 	}
 

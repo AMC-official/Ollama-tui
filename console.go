@@ -21,7 +21,7 @@ import (
 
 // --- Console: a command line with details about models and token usage ---
 
-const maxConsoleLines = 500
+const maxConsoleLines = 4000 // a conversation dump (:chat, :dump) can be long
 
 type consoleOutMsg struct{ lines []string }
 type consoleKilledMsg struct{ lines []string }
@@ -97,9 +97,19 @@ func consoleHelp() []string {
 		"Commands (the leading : is optional):",
 		"  :help             this list",
 		"  :status           backend, model, server and chat summary",
-		"  :chat <prompt>    ask the current model one question and see token counts and speed",
+		"  :chat <prompt>    ask the current model one question: shows what was sent, the reply token by token, and the stats",
+		"  :chat             (no prompt) the whole chat as the model receives it, with the tokens coloured",
+		"  :dump [full]      like :chat without a prompt; :dump full shows every line of long messages",
+		"  :ctx              what fills the context window: the size of every message",
+		"  :colors [on|off]  yellow/green token colours",
 		"  :tokens           token usage of this run and the context window",
 		"  :top              CPU, RAM, swap and GPU usage right now, with bars",
+		"  :images           list the pictures of this chat",
+		"  :view [n|path]    show a picture (inline in kitty, Ghostty, WezTerm, iTerm2; otherwise in the default viewer)",
+		"  :copy             copy the last AI reply to the clipboard",
+		"  :export [name]    save the chat as a Markdown file",
+		"  :set [key value]  show or change temp, top_p, top_k or ctx",
+		"  :system [text]    show, set or clear the system prompt (:system clear)",
 		"  :models [text]    list the models (optionally only those containing text)",
 		"  :show [model]     details about a model (default: the current one)",
 		"  :ps               models loaded in memory right now (Ollama)",
@@ -123,8 +133,13 @@ func (m *model) consolePrint(lines ...string) {
 func (m *model) refreshConsole() {
 	lines := m.consoleLines
 	if m.ccChan != nil && m.ccText != "" {
-		// The reply of a :chat prompt, shown while it streams in.
-		lines = append(append([]string(nil), lines...), "AI: "+m.ccText)
+		// The reply of a :chat prompt, shown while it streams in (one colour per token).
+		toks := m.ccTokens
+		if len(toks) == 0 {
+			toks = splitTokens(m.ccText)
+		}
+		live, _ := paintTokens(toks, 0, m.plainTokens)
+		lines = append(append([]string(nil), lines...), "AI: "+live)
 	}
 	styled := make([]string, len(lines))
 	for i, l := range lines {
@@ -261,7 +276,29 @@ func (m *model) runConsole(line string) tea.Cmd {
 	case "start":
 		return consoleStart(m.host)
 	case "chat", "ask":
+		if arg == "" { // no prompt: show the whole chat instead
+			m.consolePrint(m.dumpLines(dumpOptions{bodies: true})...)
+			return nil
+		}
 		return m.consoleChat(arg)
+	case "dump":
+		m.consolePrint(m.dumpLines(dumpOptions{bodies: true, full: strings.EqualFold(arg, "full")})...)
+	case "ctx", "context":
+		m.consolePrint(m.dumpLines(dumpOptions{})...)
+	case "colors", "colours", "color":
+		m.consoleColors(arg)
+	case "images", "imgs":
+		m.consoleImages()
+	case "view", "img", "image":
+		return m.consoleViewImage(arg)
+	case "copy":
+		m.consoleCopy()
+	case "export":
+		m.consoleExport(arg)
+	case "set":
+		m.consoleSet(arg)
+	case "system", "sys":
+		m.consoleSystem(arg)
 	case "top":
 		return consoleTop()
 	case "save":
@@ -657,7 +694,7 @@ func (m *model) consoleChat(prompt string) tea.Cmd {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch := make(chan OllamaGenerateRes)
 	m.ccChan, m.ccCancel = ch, cancel
-	m.ccPrompt, m.ccText, m.ccThinking = prompt, "", ""
+	m.ccPrompt, m.ccText, m.ccThinking, m.ccTokens = prompt, "", "", nil
 	m.ccStart, m.ccFirst, m.ccUsage = time.Now(), time.Time{}, nil
 	m.consolePrint(fmt.Sprintf("Asking %s (%s)...", name, backendLabel(m.backend)))
 
@@ -676,7 +713,7 @@ func (m *model) endConsoleChat() {
 		m.ccCancel()
 	}
 	m.ccChan, m.ccCancel = nil, nil
-	m.ccText, m.ccThinking = "", ""
+	m.ccText, m.ccThinking, m.ccTokens = "", "", nil
 	m.refreshConsole()
 }
 
@@ -716,12 +753,26 @@ func (m *model) finishConsoleChat() {
 		}
 	}
 
-	lines := []string{"AI:"}
+	// What was sent, then the reply with one colour per token.
+	sent := buildChatMessages([]ChatMessage{{Role: "You", Content: m.ccPrompt}}, m.systemPrompt, nil)
+	lines := requestBlockLines(sent, m.plainTokens)
+	lines = append(lines, "", "AI:")
 	if strings.TrimSpace(thinking) != "" {
 		lines = append(lines, fmt.Sprintf("  (thought for %d characters first)", len(thinking)))
 	}
-	for _, l := range strings.Split(strings.TrimSpace(text), "\n") {
-		lines = append(lines, "  "+l)
+	toks := m.ccTokens
+	exact := len(toks) > 0
+	if !exact {
+		toks = splitTokens(text)
+	}
+	painted, _ := paintTokens(toks, 0, m.plainTokens)
+	body := trimBlankLines(strings.Split(painted, "\n"))
+	if len(body) == 0 {
+		body = []string{"(empty reply)"}
+	}
+	lines = append(lines, indentLines(body, "  ")...)
+	if !exact {
+		lines = append(lines, "  (the server sent no separate tokens, so the colours are a rough guess)")
 	}
 	mark := ""
 	if estimated {
@@ -754,7 +805,7 @@ func (m *model) finishConsoleChat() {
 		m.ccCancel()
 	}
 	m.ccChan, m.ccCancel = nil, nil // before printing, so the live copy disappears
-	m.ccText, m.ccThinking = "", ""
+	m.ccText, m.ccThinking, m.ccTokens = "", "", nil
 	m.consolePrint(lines...)
 }
 
@@ -850,7 +901,7 @@ func (m *model) consoleSave(name string) {
 	log.Usage.ModelCalls = m.usageReplies
 	log.Usage.PromptTokens = m.usagePrompt
 	log.Usage.GeneratedTokens = m.usageCompletion
-	log.Lines = m.consoleLines
+	log.Lines = stripANSILines(m.consoleLines)
 
 	data, err := json.MarshalIndent(log, "", "  ")
 	if err != nil {

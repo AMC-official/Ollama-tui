@@ -125,7 +125,6 @@ func (m *model) reloadModels() tea.Cmd {
 	}
 	return startOllama(m.host)
 }
-
 // switchBackend moves on to the next backend and loads its models.
 func (m *model) switchBackend() tea.Cmd {
 	switch m.backend {
